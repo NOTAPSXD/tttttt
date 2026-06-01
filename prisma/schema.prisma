@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite does not support enums, using String
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("CLIENT") // ADMIN, CLIENT
+  balance       Float     @default(0.0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  servers       Server[]
+  invoices      Invoice[]
+  notifications Notification[]
+  logs          Log[]
+  resetTokens   PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Server {
+  id                 String       @id @default(uuid())
+  virtfusionId       String       @unique // ID from VirtFusion API
+  name               String
+  status             String       @default("UNKNOWN") // RUNNING, STOPPED...
+  suspended          Boolean      @default(false)
+  
+  // Cache some details to avoid API spam for simple listings
+  ip                 String?
+  cpu                String?
+  ram                String?
+  disk               String?
+
+  userId             String?
+  user               User?        @relation(fields: [userId], references: [id])
+  
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  amount      Float
+  description String
+  status      String        @default("UNPAID") // UNPAID, PAID, CANCELLED
+  dueDate     DateTime
+  paidAt      DateTime?
+  paymentMethod String?     // CARD, BANK, CRYPTO, etc.
+  reference   String?       // Transaction reference
+  
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime      @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  action    String
+  details   String?
+  ip        String?
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  recipient String
+  subject   String
+  content   String?
+  status    String   // SENT, FAILED
+  error     String?
+  sentBy    String?
+  createdAt DateTime @default(now())
+}
