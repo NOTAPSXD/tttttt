@@ -94,14 +94,31 @@ export const authOptions: NextAuthOptions = {
             }
             return true;
         },
-        async jwt({ token, user, account }: any) {
+        async jwt({ token, user }: any) {
             if (user) {
                 token.role = user.role;
                 token.id = user.id;
+                
+                // Initialize the password hash in the token
+                await connectDB();
+                const dbUser = await User.findById(user.id).select("password");
+                token.passwordHash = dbUser?.password || "";
+            } else if (token.id) {
+                // Verify that the password in the database matches the token
+                await connectDB();
+                const dbUser = await User.findById(token.id).select("password");
+                const currentHash = dbUser?.password || "";
+                if (token.passwordHash !== currentHash) {
+                    // Password changed! Invalidate session
+                    return {};
+                }
             }
             return token;
         },
         async session({ session, token }: any) {
+            if (!token || !token.id) {
+                return null;
+            }
             if (session.user) {
                 (session.user as any).role = token.role;
                 (session.user as any).id = token.id;

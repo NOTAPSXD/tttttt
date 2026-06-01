@@ -612,13 +612,19 @@ export default function UserManagement({ users }: { users: UserData[] }) {
 
 // --- Reusable Components ---
 
-function Modal({ title, onClose, children }: any) {
+interface ModalProps {
+    title: string;
+    onClose: () => void;
+    children: React.ReactNode;
+}
+
+function Modal({ title, onClose, children }: ModalProps) {
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#09090b] w-full max-w-md rounded-xl border border-zinc-800 shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800">
-                    <h3 className="text-sm font-bold text-white">{title}</h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-[#09090b]/90 backdrop-blur-md w-full max-w-md rounded-2xl border border-zinc-800/60 shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800/60">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">{title}</h3>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white p-1 hover:bg-zinc-900 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-6">
                     {children}
@@ -628,13 +634,21 @@ function Modal({ title, onClose, children }: any) {
     );
 }
 
-function InputGroup({ label, value, onChange, type = "text", placeholder }: any) {
+interface InputGroupProps {
+    label: string;
+    value: string;
+    onChange: (val: string) => void;
+    type?: string;
+    placeholder?: string;
+}
+
+function InputGroup({ label, value, onChange, type = "text", placeholder }: InputGroupProps) {
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</label>
             <input
                 type={type}
-                className="w-full bg-black border border-zinc-800 rounded-md px-3 py-2 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-white transition-all font-mono"
+                className="w-full bg-black/60 border border-zinc-850 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600 transition-all font-mono"
                 placeholder={placeholder}
                 value={value}
                 onChange={e => onChange(e.target.value)}
@@ -644,15 +658,22 @@ function InputGroup({ label, value, onChange, type = "text", placeholder }: any)
     );
 }
 
-function RoleSelectButton({ selected, onClick, icon: Icon, label }: any) {
+interface RoleSelectButtonProps {
+    selected: boolean;
+    onClick: () => void;
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+}
+
+function RoleSelectButton({ selected, onClick, icon: Icon, label }: RoleSelectButtonProps) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`flex items-center justify-center gap-2 py-3 rounded-lg border transition-all ${
+            className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${
                 selected 
-                ? "bg-white text-black border-white" 
-                : "bg-black text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300"
+                ? "bg-white text-black border-white hover:bg-zinc-200" 
+                : "bg-zinc-950/50 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300"
             }`}
         >
             <Icon className="w-4 h-4" />

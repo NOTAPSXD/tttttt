@@ -174,7 +174,7 @@ export default function ServerControl({ initialVfData, serverId }: { initialVfDa
 
     // --- Styles ---
     // --- Styles ---
-    const cardClass = "bg-[#09090b] border border-zinc-800/60 rounded-2xl overflow-hidden transition-all duration-300 hover:border-zinc-700/80 group";
+    const cardClass = "bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl overflow-hidden transition-all duration-300 hover:border-zinc-700/80 group shadow-xl shadow-black/10";
     const subTextClass = "text-[10px] font-bold text-zinc-500 uppercase tracking-wider";
 
     return (
@@ -234,7 +234,7 @@ export default function ServerControl({ initialVfData, serverId }: { initialVfDa
                 </header>
 
                 {/* Refined Tabs */}
-                <div className="flex items-center gap-1 bg-zinc-900/40 p-1 rounded-xl border border-zinc-800/50 w-fit">
+                <div className="flex items-center gap-1 bg-zinc-900/40 p-1 rounded-xl border border-zinc-800/50 w-fit relative">
                     {['Overview', 'Network', 'Storage', 'Security', 'Settings'].map(tab => {
                         const isActive = activeTab === tab.toLowerCase();
                         return (
@@ -242,12 +242,19 @@ export default function ServerControl({ initialVfData, serverId }: { initialVfDa
                                 key={tab}
                                 onClick={() => setActiveTab(tab.toLowerCase())}
                                 className={cn(
-                                    "px-5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all",
+                                    "px-5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all relative z-10",
                                     isActive
-                                        ? "bg-zinc-800 text-white shadow-sm"
-                                        : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50"
+                                        ? "text-white"
+                                        : "text-zinc-500 hover:text-zinc-300"
                                 )}
                             >
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="activeTabGlow"
+                                        className="absolute inset-0 bg-zinc-800/80 rounded-lg -z-10"
+                                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                    />
+                                )}
                                 {tab}
                             </button>
                         )
@@ -840,148 +847,225 @@ export default function ServerControl({ initialVfData, serverId }: { initialVfDa
             )
 }
 
-            function PowerBtn({label, icon, onClick, disabled, loading, active, danger}: any) {
-    return (
-            <button
-                onClick={onClick}
-                disabled={disabled || loading || !active}
-                className={cn(
-                    "flex-1 h-11 rounded-xl flex items-center justify-center gap-2.5 font-bold text-[11px] uppercase tracking-wider transition-all border",
-                    loading && "bg-zinc-900 border-zinc-800 text-zinc-500",
-                    !active && !loading && "bg-zinc-900/30 border-zinc-900 text-zinc-800 cursor-not-allowed opacity-50",
-                    active && !loading && !danger && "bg-white text-black border-white hover:bg-zinc-200 active:scale-95",
-                    active && !loading && danger && "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-red-600 hover:text-white hover:border-red-600 active:scale-95"
-                )}
-            >
-                {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <div className="w-3.5 h-3.5">{icon}</div>}
-                <span className="hidden sm:inline">{label}</span>
-            </button>
-            )
+interface PowerBtnProps {
+    label: string;
+    icon: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    loading?: boolean;
+    active?: boolean;
+    danger?: boolean;
 }
 
-            function InfoRow({label, value, icon}: any) {
+function PowerBtn({label, icon, onClick, disabled, loading, active, danger}: PowerBtnProps) {
     return (
-            <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2.5">
-                    <div className="text-zinc-600">{icon}</div>
-                    <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{label}</span>
-                </div>
-                <span className="text-xs font-bold text-zinc-200">{value}</span>
+        <button
+            onClick={onClick}
+            disabled={disabled || loading || !active}
+            className={cn(
+                "flex-1 h-11 rounded-xl flex items-center justify-center gap-2.5 font-bold text-[11px] uppercase tracking-wider transition-all duration-300 border",
+                loading && "bg-zinc-950/80 border-zinc-900 text-zinc-500",
+                !active && !loading && "bg-zinc-950/20 border-zinc-900/40 text-zinc-800 cursor-not-allowed opacity-40",
+                active && !loading && !danger && "bg-white text-black border-white hover:bg-zinc-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-white/5",
+                active && !loading && danger && "bg-zinc-900/50 text-zinc-400 border-zinc-800/80 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 hover:scale-[1.02] active:scale-[0.98] hover:shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+            )}
+        >
+            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <div className="w-3.5 h-3.5">{icon}</div>}
+            <span className="hidden sm:inline">{label}</span>
+        </button>
+    )
+}
+
+interface InfoRowProps {
+    label: string;
+    value: string | number;
+    icon: React.ReactNode;
+}
+
+function InfoRow({label, value, icon}: InfoRowProps) {
+    return (
+        <div className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-2.5">
+                <div className="text-zinc-600">{icon}</div>
+                <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{label}</span>
             </div>
-            )
+            <span className="text-xs font-bold text-zinc-200">{value}</span>
+        </div>
+    )
 }
 
-            function MetricCard({label, value, unit, icon, trend, color}: any) {
-    return (
-            <div className="bg-[#09090b] border border-zinc-800/60 rounded-2xl p-5 relative overflow-hidden group hover:border-zinc-700/80 transition-all">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-zinc-900/50 border border-zinc-800/50 rounded-lg text-zinc-500 group-hover:text-white transition-all">
-                        {icon}
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">{label}</p>
-                        <p className="text-xl font-bold text-white tracking-tight mt-0.5">{value}<span className="text-[10px] text-zinc-600 ml-1 font-bold">{unit}</span></p>
-                    </div>
-                </div>
-                <div className="h-10 w-full opacity-20 group-hover:opacity-50 transition-opacity">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trend}>
-                            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={color} fillOpacity={0.2} animationDuration={1000} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-            )
+interface MetricCardProps {
+    label: string;
+    value: string | number;
+    unit: string;
+    icon: React.ReactNode;
+    trend: Array<{ time?: string; value: number }>;
+    color: string;
 }
 
-            function SimpleMetricCard({label, value, unit, icon, color}: any) {
-    const colors: any = {
-                emerald: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-            blue: "text-blue-500 bg-blue-500/10 border-blue-500/20"
+function MetricCard({label, value, unit, icon, trend, color}: MetricCardProps) {
+    const glowClasses: Record<string, string> = {
+        '#3b82f6': 'hover:shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:border-blue-500/40',
+        '#a855f7': 'hover:shadow-[0_0_30px_rgba(168,85,247,0.12)] hover:border-purple-500/40',
+        '#10b981': 'hover:shadow-[0_0_30px_rgba(16,185,129,0.12)] hover:border-emerald-500/40',
+        '#f43f5e': 'hover:shadow-[0_0_30px_rgba(244,63,94,0.12)] hover:border-rose-500/40',
     };
 
-            return (
-            <div className="bg-[#09090b] border border-zinc-800/60 rounded-2xl p-5 hover:border-zinc-700/80 transition-all">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", colors[color])}>
-                        {icon}
-                    </div>
-                    <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">{label}</p>
-                </div>
-                <p className="text-xl font-bold text-white tracking-tight">{value}<span className="text-[10px] text-zinc-600 ml-1 font-bold">{unit}</span></p>
-            </div>
-            )
-}
+    const activeGlow = glowClasses[color] || 'hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] hover:border-zinc-700/80';
 
-            function SecurityStat({icon, label, value, color}: any) {
-    const colors: any = {
-                emerald: "text-emerald-400 bg-emerald-500/5 border-emerald-500/20",
-            blue: "text-blue-400 bg-blue-500/5 border-blue-500/20",
-            indigo: "text-indigo-400 bg-indigo-500/5 border-indigo-500/20",
-            zinc: "text-zinc-400 bg-zinc-900/50 border-zinc-800/50"
-    };
-
-            return (
-            <div className={cn("bg-[#09090b] border border-zinc-800/60 rounded-2xl p-5 flex items-center gap-4")}>
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", colors[color])}>
+    return (
+        <div className={cn(
+            "bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-5 relative overflow-hidden group transition-all duration-500 hover:scale-[1.02]",
+            activeGlow
+        )}>
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-zinc-950/60 border border-zinc-800/85 rounded-lg text-zinc-500 group-hover:text-white transition-all duration-300">
                     {icon}
                 </div>
-                <div>
+                <div className="text-right">
                     <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
-                    <p className="text-sm font-bold text-white tracking-tight mt-0.5">{value}</p>
+                    <p className="text-xl font-bold text-white tracking-tight mt-0.5">{value}<span className="text-[10px] text-zinc-600 ml-1 font-bold">{unit}</span></p>
                 </div>
             </div>
-            )
+            <div className="h-10 w-full opacity-20 group-hover:opacity-60 transition-all duration-500">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trend}>
+                        <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={color} fillOpacity={0.15} animationDuration={1200} />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    )
 }
 
-            function ChartWidget({title, data, color, suffix}: any) {
+interface SimpleMetricCardProps {
+    label: string;
+    value: string | number;
+    unit: string;
+    icon: React.ReactNode;
+    color: 'emerald' | 'blue';
+}
+
+function SimpleMetricCard({label, value, unit, icon, color}: SimpleMetricCardProps) {
+    const iconColors = {
+        emerald: "text-emerald-400 bg-emerald-500/5 border-emerald-500/20 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/40",
+        blue: "text-blue-400 bg-blue-500/5 border-blue-500/20 group-hover:bg-blue-500/10 group-hover:border-blue-500/40"
+    };
+
+    const glowClasses = {
+        emerald: "hover:shadow-[0_0_30px_rgba(16,185,129,0.12)] hover:border-emerald-500/40",
+        blue: "hover:shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:border-blue-500/40"
+    };
+
     return (
-            <motion.div variants={itemVariants} className="bg-zinc-950/30 backdrop-blur-3xl border border-zinc-900 rounded-[3rem] p-12 hover:border-zinc-800 transition-all duration-700">
-                <div className="flex items-center justify-between mb-12">
-                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.4em]">{title}</h3>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full">
-                            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }} />
-                            <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Real-time Data</span>
-                        </div>
+        <div className={cn(
+            "bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-5 relative overflow-hidden group transition-all duration-500 hover:scale-[1.02]",
+            glowClasses[color]
+        )}>
+            <div className="flex items-center gap-3 mb-4">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-300", iconColors[color])}>
+                    {icon}
+                </div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
+            </div>
+            <p className="text-xl font-bold text-white tracking-tight">{value}<span className="text-[10px] text-zinc-600 ml-1 font-bold">{unit}</span></p>
+        </div>
+    )
+}
+
+interface SecurityStatProps {
+    icon: React.ReactNode;
+    label: string;
+    value: string | number;
+    color: 'emerald' | 'blue' | 'indigo' | 'zinc';
+}
+
+function SecurityStat({icon, label, value, color}: SecurityStatProps) {
+    const iconColors = {
+        emerald: "text-emerald-400 bg-emerald-500/5 border-emerald-500/20 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/40",
+        blue: "text-blue-400 bg-blue-500/5 border-blue-500/20 group-hover:bg-blue-500/10 group-hover:border-blue-500/40",
+        indigo: "text-indigo-400 bg-indigo-500/5 border-indigo-500/20 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/40",
+        zinc: "text-zinc-400 bg-zinc-900/50 border-zinc-800/50 group-hover:bg-zinc-850 group-hover:border-zinc-700"
+    };
+
+    const glowClasses = {
+        emerald: "hover:shadow-[0_0_30px_rgba(16,185,129,0.08)] hover:border-emerald-500/40",
+        blue: "hover:shadow-[0_0_30px_rgba(59,130,246,0.08)] hover:border-blue-500/40",
+        indigo: "hover:shadow-[0_0_30px_rgba(99,102,241,0.08)] hover:border-indigo-500/40",
+        zinc: "hover:shadow-[0_0_30px_rgba(255,255,255,0.04)] hover:border-zinc-700/80"
+    };
+
+    return (
+        <div className={cn(
+            "bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-5 flex items-center gap-4 group transition-all duration-500 hover:scale-[1.02]",
+            glowClasses[color]
+        )}>
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-300", iconColors[color])}>
+                {icon}
+            </div>
+            <div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
+                <p className="text-sm font-bold text-white tracking-tight mt-0.5">{value}</p>
+            </div>
+        </div>
+    )
+}
+
+interface ChartWidgetProps {
+    title: string;
+    data: Array<{ time: string; value: number }>;
+    color: string;
+    suffix: string;
+}
+
+function ChartWidget({title, data, color, suffix}: ChartWidgetProps) {
+    return (
+        <motion.div variants={itemVariants} className="bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-8 hover:border-zinc-700/80 transition-all duration-500 shadow-xl shadow-black/10">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{title}</h3>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900/50 border border-zinc-800/50 rounded-full">
+                        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }} />
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Real-time Data</span>
                     </div>
                 </div>
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data.length ? data : [{ time: '', value: 0 }]}>
-                            <defs>
-                                <linearGradient id={`g-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                            <XAxis dataKey="time" hide />
-                            <YAxis
-                                stroke="#3f3f46"
-                                fontSize={10}
-                                fontWeight="black"
-                                tickFormatter={(val) => `${val}${suffix}`}
-                                tickLine={false}
-                                axisLine={false}
-                                domain={[0, 100]}
-                            />
-                            <RechartsTooltip
-                                contentStyle={{ backgroundColor: '#000', borderColor: '#27272a', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #333', padding: '15px' }}
-                                itemStyle={{ color: '#fff' }}
-                                cursor={{ stroke: '#52525b', strokeWidth: 1 }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke={color}
-                                strokeWidth={4}
-                                fill={`url(#g-${title})`}
-                                animationDuration={1500}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </motion.div>
-            )
+            </div>
+            <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.length ? data : [{ time: '', value: 0 }]}>
+                        <defs>
+                            <linearGradient id={`g-${title}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
+                        <XAxis dataKey="time" hide />
+                        <YAxis
+                            stroke="#3f3f46"
+                            fontSize={10}
+                            fontWeight="bold"
+                            tickFormatter={(val) => `${val}${suffix}`}
+                            tickLine={false}
+                            axisLine={false}
+                            domain={[0, 100]}
+                        />
+                        <RechartsTooltip
+                            contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '12px', fontSize: '11px', border: '1px solid #27272a', padding: '10px' }}
+                            itemStyle={{ color: '#fff' }}
+                            cursor={{ stroke: '#52525b', strokeWidth: 1 }}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke={color}
+                            strokeWidth={3}
+                            fill={`url(#g-${title})`}
+                            animationDuration={1500}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </motion.div>
+    )
 }

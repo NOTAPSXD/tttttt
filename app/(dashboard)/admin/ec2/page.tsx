@@ -134,9 +134,9 @@ export default function AdminCloudInstances() {
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
                         <Server className="w-7 h-7 text-[#4f7cff]" />
-                        EC2 Cloud Instances
+                        Cloud Infrastructure Assets
                     </h1>
-                    <p className="text-sm text-zinc-400 mt-1">Manage and assign AWS compute resources</p>
+                    <p className="text-sm text-zinc-400 mt-1">Manage and assign cloud compute resources</p>
                 </div>
                 
                 <button 

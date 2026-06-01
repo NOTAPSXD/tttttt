@@ -64,7 +64,7 @@ export default async function AdminVPSDetailPage({ params }: { params: Promise<{
                     <Shield className="w-10 h-10" />
                 </div>
                 <h1 className="text-4xl font-black text-white tracking-tighter uppercase">Infrastructure Error</h1>
-                <p className="text-zinc-500 max-w-md mx-auto font-medium">Could not establish a secure connection to the VirtFusion API for server asset <b>{server.virtfusionId}</b>.</p>
+                <p className="text-zinc-500 max-w-md mx-auto font-medium">Could not establish a secure connection to the virtualization API for server asset <b>{server.virtfusionId}</b>.</p>
                 <Link href="/admin" className="inline-flex items-center gap-2 px-8 py-3 bg-white text-black rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all">
                     <ChevronLeft className="w-4 h-4" /> Return to Command Center
                 </Link>

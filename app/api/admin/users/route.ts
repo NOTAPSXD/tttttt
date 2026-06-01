@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectDB, User } from "@/lib/db";
+import { connectDB, User, Server, VPSServer } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
@@ -10,7 +10,25 @@ export async function GET() {
 
     await connectDB();
     try {
-        const users = await User.find({}, { name: 1, email: 1, _id: 1, role: 1 }).sort({ name: 1 });
+        const usersList = await User.find({}, { name: 1, email: 1, _id: 1, role: 1 }).sort({ name: 1 }).lean();
+        
+        const users = await Promise.all(usersList.map(async (u: any) => {
+            const userIdStr = u._id.toString();
+            const vfCount = await Server.countDocuments({ userId: userIdStr });
+            const ec2Count = await VPSServer.countDocuments({ userId: userIdStr });
+            
+            return {
+                id: userIdStr,
+                _id: userIdStr,
+                name: u.name,
+                email: u.email,
+                role: u.role,
+                _count: {
+                    servers: vfCount + ec2Count
+                }
+            };
+        }));
+        
         return NextResponse.json(users);
     } catch (e) {
         return new NextResponse("Internal Server Error", { status: 500 });

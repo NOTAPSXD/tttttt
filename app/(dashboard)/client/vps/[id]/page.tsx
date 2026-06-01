@@ -59,7 +59,7 @@ export default async function VPSDetailPage({ params }: { params: Promise<{ id: 
             return (
                 <div className="p-8 text-center">
                     <h1 className="text-2xl font-bold text-red-500">API Error</h1>
-                    <p className="text-gray-400">Could not fetch server details from VirtFusion.</p>
+                    <p className="text-gray-400">Could not fetch server details from the virtual server platform.</p>
                 </div>
             )
         }
