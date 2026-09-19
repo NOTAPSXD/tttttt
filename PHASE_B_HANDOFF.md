@@ -49,3 +49,14 @@ Raw VirtFusion payload shapes are preserved via `getUpstream()`/`listUpstream()`
 - zod request validation + otplib 2FA feed into existing `LoginHistory`/`PasswordResetToken`/`Session` models.
 - `lib/audit.ts` `providerErrorToResponse` is the single choke point for surfacing provider failures to UI.
 - SMTP: `SMTP_HOST/PORT/SECURE/USER/PASS/FROM` envs already documented in `.env.example`.
+
+## Phase C (delivered so far)
+
+- **zod validation** (`lib/validation.ts`): `parseBody` helper + shared schemas; applied to register, forgot-password, reset-password, change-password and all 2FA routes. Uses zod v4 (`{ error: ... }` params).
+- **TOTP 2FA** (otplib v13 functional API): secrets encrypted at rest via AES-256-GCM (`ENCRYPTION_KEY`, `lib/crypto.ts`). Routes: `api/user/2fa/{setup,enable,disable}`. `setup` GET returns `{enabled}` / POST issues a provisional secret + otpauth URL; `enable` verifies the code and mints **single-use recovery codes** (hashed at rest); `disable` requires a TOTP or recovery code (rate-limited). Login (`lib/auth.ts` authorize) now takes an optional `otp` field; it is mandatory when 2FA is enabled (TOTP or recovery). TOTP verified with ±1 step tolerance.
+- **2FA UI**: QR code + manual-secret enrollment in `client/settings` (`qrcode` lib), recovery-code vault display, and an OTP field on `/login`.
+- **Password reset hardening**: rate-limited per-email (forgot) and per-IP (reset); reset tokens are now **strictly single-use** (`used` flag, atomic `findOneAndUpdate`); notify-on-change email; bcrypt min 8 / max 72 enforced everywhere.
+- **Login history**: failed + successful credential logins recorded into `LoginHistory` (ip/user-agent/reason). Admin user modal now shows real activity via new `api/admin/users/[id]/activity` (mock rows removed).
+- **Fixed**: `register` now sets required `emailLower` (was a latent save failure); email lookup is `emailLower`-aware everywhere.
+- Verify builds under Node ≥20.9; `npx tsc --noEmit` clean.
+- Deferred deliberately: server-side `Session` row tracking (Phase D device management), QR provisioning for all legacy users.

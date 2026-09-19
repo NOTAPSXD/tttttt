@@ -4,11 +4,12 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, Lock, ArrowRight, Server } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowRight, Server, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [otp, setOtp] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const router = useRouter();
@@ -22,6 +23,7 @@ export default function LoginPage() {
             const res = await signIn("credentials", {
                 email,
                 password,
+                otp,
                 redirect: false,
             });
 
@@ -98,6 +100,26 @@ export default function LoginPage() {
                                 className="w-full bg-black border border-zinc-800/80 rounded-xl pl-14 pr-5 py-4 text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                                 placeholder="••••••••"
                                 required
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2.5">
+                            Two-Factor Code
+                        </label>
+                        <div className="relative group">
+                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-400 transition-colors">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="w-full bg-black border border-zinc-800/80 rounded-xl pl-14 pr-5 py-4 text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                                placeholder="1 2 3 4 5 6 (only if enabled)"
                             />
                         </div>
                     </div>

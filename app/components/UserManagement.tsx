@@ -141,16 +141,19 @@ export default function UserManagement({ users }: { users: UserData[] }) {
         setShowActivityModal(true);
         setActiveMenu(null);
         try {
-            // Mock API call
-            await new Promise(r => setTimeout(r, 500)); 
-            const mockActivities: UserActivity[] = [
-                { id: '1', userId: user.id, action: 'Login', timestamp: new Date().toISOString(), ipAddress: '192.168.1.1' },
-                { id: '2', userId: user.id, action: 'Password Changed', timestamp: new Date(Date.now() - 86400000).toISOString() },
-                { id: '3', userId: user.id, action: 'Server Created', timestamp: new Date(Date.now() - 172800000).toISOString(), details: 'web-server-01' },
-            ];
-            setUserActivities(mockActivities);
+            const res = await axios.get(`/api/admin/users/${user.id}/activity`);
+            const activities: UserActivity[] = (res.data?.activities || []).map((a: any) => ({
+                id: a.id,
+                userId: a.userId,
+                action: a.action,
+                timestamp: a.timestamp,
+                ipAddress: a.ipAddress,
+                details: a.details,
+            }));
+            setUserActivities(activities);
         } catch (error) {
-            alert('Failed to load user activity');
+            console.error("Failed to load user activity:", error);
+            setUserActivities([]);
         } finally {
             setLoadingActivities(false);
         }

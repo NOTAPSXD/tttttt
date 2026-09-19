@@ -44,6 +44,7 @@ export interface IUser extends Document {
     twoFactor?: {
         enabled: boolean;
         secretEnc?: string | null;
+        pendingSecretEnc?: string | null;
         recoveryHashes?: string[];
     };
     createdAt: Date;
@@ -55,6 +56,7 @@ export interface IPasswordResetToken extends Document {
     token: string;
     expiresAt: Date;
     userId: string;
+    used: boolean;
     createdAt: Date;
 }
 
@@ -278,6 +280,7 @@ const UserSchema = new Schema<IUser>(
         twoFactor: {
             enabled: { type: Boolean, default: false },
             secretEnc: { type: String, default: null },
+            pendingSecretEnc: { type: String, default: null },
             recoveryHashes: { type: [String], default: [] },
         },
     },
@@ -292,6 +295,7 @@ const PasswordResetTokenSchema = new Schema<IPasswordResetToken>(
         token: { type: String, required: true, unique: true },
         expiresAt: { type: Date, required: true },
         userId: { type: String, required: true, ref: 'User' },
+        used: { type: Boolean, default: false },
     },
     { timestamps: { createdAt: true, updatedAt: false } }
 );

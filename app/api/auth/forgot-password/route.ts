@@ -2,17 +2,30 @@ import { NextResponse } from "next/server";
 import { connectDB, User, PasswordResetToken } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
+import { parseBody, forgotPasswordSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+    const parsed = await parseBody(req, forgotPasswordSchema);
+    if (!parsed.ok) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
     try {
         await connectDB();
-        const { email } = await req.json();
 
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        // Limit password-reset requests per email address (3 per 10 minutes).
+        const rl = await rateLimit(`forgot_${parsed.data.email}`, 3, 600000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: "Too many reset requests. Please wait before trying again." },
+                { status: 429 }
+            );
+        }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ emailLower: parsed.data.email });
         if (!user) {
-            // Fake success
+            // Fake success — never reveal whether an account exists.
             return NextResponse.json({ success: true });
         }
 
@@ -21,11 +34,11 @@ export async function POST(req: Request) {
 
         await PasswordResetToken.create({
             token,
-            userId: user._id,
-            expiresAt
+            userId: user._id.toString(),
+            expiresAt,
         });
 
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || "http://localhost:2004";
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
         await sendEmail(
@@ -46,7 +59,8 @@ export async function POST(req: Request) {
                 </div>
             </div>
             `,
-            "SYSTEM"
+            "SYSTEM",
+            `Reset your VexaNode password:\n${resetUrl}\n\nLink expires in 1 hour.\n`
         );
 
         return NextResponse.json({ success: true });

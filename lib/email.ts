@@ -1,43 +1,54 @@
-
 import nodemailer from 'nodemailer';
-
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
-
 import { connectDB, EmailLog } from '@/lib/db';
 
-// ... existing code ...
+let transporter: nodemailer.Transporter | null = null;
 
-export const sendEmail = async (to: string, subject: string, html: string, sentBy: string = 'SYSTEM') => {
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+function getTransporter(): nodemailer.Transporter | null {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER) return null;
+    if (!transporter) {
+        transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+    }
+    return transporter;
+}
+
+export const sendEmail = async (
+    to: string,
+    subject: string,
+    html: string,
+    sentBy: string = 'SYSTEM',
+    text?: string
+) => {
+    const t = getTransporter();
+    if (!t) {
         console.warn("SMTP configuration missing. Email not sent.");
         return false;
     }
 
     try {
-        await transporter.sendMail({
+        await t.sendMail({
             from: process.env.SMTP_FROM || '"VexaNode" <noreply@vexanode.com>',
             to,
             subject,
             html,
+            text: text || undefined,
         });
 
-        // Log to database
         try {
             await connectDB();
             await EmailLog.create({
                 recipient: to,
                 subject,
-                content: html.substring(0, 5000), // Limit size
+                content: html.substring(0, 5000),
                 status: 'SENT',
-                sentBy
+                sentBy,
             });
         } catch (e) {
             console.error("Failed to log email:", e);
@@ -45,9 +56,9 @@ export const sendEmail = async (to: string, subject: string, html: string, sentB
 
         console.log(`Email sent to ${to}: ${subject}`);
         return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Email sending failed:", error);
-        // Log failure
+        const message = error instanceof Error ? error.message : "Unknown SMTP error";
         try {
             await connectDB();
             await EmailLog.create({
@@ -55,10 +66,12 @@ export const sendEmail = async (to: string, subject: string, html: string, sentB
                 subject,
                 content: html.substring(0, 5000),
                 status: 'FAILED',
-                error: error.message,
-                sentBy
+                error: message,
+                sentBy,
             });
-        } catch (e) { }
+        } catch {
+            // logging failure is non-fatal
+        }
         return false;
     }
 };

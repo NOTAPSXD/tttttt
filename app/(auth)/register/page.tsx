@@ -104,11 +104,11 @@ export default function RegisterPage() {
                                 className="w-full bg-black border border-zinc-800/80 rounded-xl pl-14 pr-5 py-4 text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                                 placeholder="••••••••"
                                 required
-                                minLength={6}
+                                minLength={8}
                             />
                         </div>
                         <p className="mt-2 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                            Must be at least 6 characters long
+                            Must be at least 8 characters long
                         </p>
                     </div>
                 </div>
