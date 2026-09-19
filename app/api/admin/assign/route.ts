@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         if (!parsed.ok) return new NextResponse(parsed.error, { status: 400 });
         const { providerServerId, virtfusionId, userId, reason, notify } = parsed.data;
 
-        const resolvedId = providerServerId || virtfusionId;
+        const resolvedId = String(providerServerId || virtfusionId || "");
         if (!resolvedId) return new NextResponse("Missing server id", { status: 400 });
 
         // Look up the server record first; if it isn't mapped yet, create it

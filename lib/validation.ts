@@ -136,9 +136,14 @@ export const bookmarkSchema = z.object({
     bookmarked: z.boolean(),
 });
 
+const providerServerIdRef = z.union([
+    z.string().trim().regex(/^\d+$/, { error: "Invalid server id" }),
+    z.number().int().nonnegative(),
+]);
+
 export const assignSchema = z.object({
-    providerServerId: z.string().regex(/^\d+$/, { error: "Invalid server id" }).optional(),
-    virtfusionId: z.string().regex(/^\d+$/, { error: "Invalid server id" }).optional(),
+    providerServerId: providerServerIdRef.optional(),
+    virtfusionId: providerServerIdRef.optional(),
     userId: z.string().trim().min(1, { error: "A user must be selected" }),
     reason: z.string().trim().max(200).optional(),
     notify: z.boolean().optional(),

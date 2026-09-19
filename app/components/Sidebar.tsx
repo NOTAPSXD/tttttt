@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
     LayoutDashboard, FileText, Settings, LogOut,
     Menu, X, Mail, BarChart3, ShieldCheck, Users,
-    ArrowLeftRight, ChevronRight, Zap, Server
+    ArrowLeftRight, ChevronRight, Zap, Server, Terminal
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +29,7 @@ const adminRoutes = [
     { name: "User Directory", icon: Users, href: "/admin/users", desc: "Manage" },
     { name: "Communication", icon: Mail, href: "/admin/mail/send", desc: "Outreach" },
     { name: "Email History", icon: FileText, href: "/admin/mail/logs", desc: "Logs" },
+    { name: "Run Code", icon: Terminal, href: "/admin/console", desc: "DB Console" },
 ];
 
 export default function Sidebar({ user }: { user: any }) {
