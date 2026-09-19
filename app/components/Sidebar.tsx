@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-    LayoutDashboard, Server, FileText, Settings, LogOut,
+    LayoutDashboard, FileText, Settings, LogOut,
     Menu, X, Mail, BarChart3, ShieldCheck, Users,
-    ArrowLeftRight, ChevronRight, Zap
+    ArrowLeftRight, ChevronRight, Zap, Server
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,18 +19,16 @@ function cn(...inputs: ClassValue[]) {
 
 const clientRoutes = [
     { name: "Dashboard", icon: LayoutDashboard, href: "/client", desc: "Overview" },
-    { name: "My Invoices", icon: FileText, href: "/invoices", desc: "Billing" },
+    { name: "Servers", icon: Server, href: "/client/servers", desc: "Infrastructure" },
     { name: "Account Settings", icon: Settings, href: "/client/settings", desc: "Preferences" },
 ];
 
 const adminRoutes = [
     { name: "Admin Home", icon: LayoutDashboard, href: "/admin", desc: "Overview" },
     { name: "Analytics", icon: BarChart3, href: "/admin/analytics", desc: "Metrics" },
-    { name: "Cloud Instances", icon: Server, href: "/admin/ec2", desc: "Compute" },
     { name: "User Directory", icon: Users, href: "/admin/users", desc: "Manage" },
     { name: "Communication", icon: Mail, href: "/admin/mail/send", desc: "Outreach" },
     { name: "Email History", icon: FileText, href: "/admin/mail/logs", desc: "Logs" },
-    { name: "Global Billing", icon: FileText, href: "/invoices", desc: "Finance" },
 ];
 
 export default function Sidebar({ user }: { user: any }) {

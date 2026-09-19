@@ -20,7 +20,6 @@ model User {
   updatedAt     DateTime  @updatedAt
   
   servers       Server[]
-  invoices      Invoice[]
   notifications Notification[]
   logs          Log[]
   resetTokens   PasswordResetToken[]
@@ -53,22 +52,6 @@ model Server {
   
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
-}
-
-model Invoice {
-  id          String        @id @default(uuid())
-  amount      Float
-  description String
-  status      String        @default("UNPAID") // UNPAID, PAID, CANCELLED
-  dueDate     DateTime
-  paidAt      DateTime?
-  paymentMethod String?     // CARD, BANK, CRYPTO, etc.
-  reference   String?       // Transaction reference
-  
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  
-  createdAt   DateTime      @default(now())
 }
 
 model Notification {

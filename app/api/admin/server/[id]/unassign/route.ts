@@ -2,17 +2,38 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
+import { unassignServer } from "@/lib/ownership";
+import { isAdmin } from "@/lib/permissions";
 
+/**
+ * Soft unassign: detach ownership and close the active assignment. The server
+ * record is NEVER deleted here — it remains an UNASSIGNED / available asset.
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    if (session?.user?.role !== "ADMIN") return new NextResponse("Unauthorized", { status: 403 });
+    if (!session || !isAdmin(String(session.user.role))) return new NextResponse("Unauthorized", { status: 403 });
 
     try {
         await connectDB();
-        await Server.findByIdAndDelete(id);
-        return NextResponse.json({ success: true });
+        const body = await req.json().catch(() => ({}));
+        const reason = typeof body.reason === "string" && body.reason ? body.reason.slice(0, 200) : undefined;
+        const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+
+        const result = await unassignServer({
+            serverId: id,
+            actor: { id: session.user.id, role: String(session.user.role), email: session.user.email ?? undefined },
+            reason,
+            ip,
+        });
+
+        if (!result.ok) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
+        }
+
+        return NextResponse.json({ success: true, serverId: result.serverId });
     } catch (error) {
-        return NextResponse.json({ error: "Failed to delete assignment" }, { status: 500 });
+        console.error("unassign error:", error);
+        return NextResponse.json({ error: "Failed to unassign server" }, { status: 500 });
     }
 }

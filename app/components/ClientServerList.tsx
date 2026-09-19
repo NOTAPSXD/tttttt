@@ -39,7 +39,7 @@ export default function ClientServerList({ servers: initialServers }: ServerCard
                         transition={{ delay: index * 0.05 }}
                         className="group relative"
                     >
-                        <Link href={`/client/vps/${server.id}`} className="block">
+                        <Link href={`/client/servers/${server.id}`} className="block">
                             <div className="bg-zinc-950/40 backdrop-blur-2xl border border-zinc-800/50 rounded-[2rem] p-8 transition-all duration-500 hover:border-zinc-500/50 hover:bg-zinc-900/40 relative overflow-hidden h-full group">
                                 
                                 {/* Ambient Glow */}

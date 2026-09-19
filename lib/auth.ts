@@ -30,7 +30,7 @@ export const authOptions: NextAuthOptions = {
                 // Brute force protection (rate limiting per email)
                 // Limit: 5 failed attempts per 5 minutes (300,000 ms)
                 const emailStr = String(credentials.email).toLowerCase();
-                const rl = rateLimit(`login_${emailStr}`, 5, 300000);
+                const rl = await rateLimit(`login_${emailStr}`, 5, 300000);
                 
                 if (!rl.success) {
                     throw new Error("Too many login attempts. Please try again in 5 minutes.");
@@ -49,6 +49,9 @@ export const authOptions: NextAuthOptions = {
                 const isValid = await bcrypt.compare(password, user.password);
 
                 if (!isValid) return null;
+
+                // Record last login (non-blocking)
+                User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } }).catch(() => {});
 
                 // Reset rate limit on success by making a dummy successful call
                 // Not perfectly resetting here, but avoiding throwing errors for successful auth.
@@ -91,6 +94,9 @@ export const authOptions: NextAuthOptions = {
                 
                 user.id = dbUser._id.toString();
                 (user as any).role = dbUser.role;
+
+                // Record last login (non-blocking)
+                User.updateOne({ _id: dbUser._id }, { $set: { lastLogin: new Date() } }).catch(() => {});
             }
             return true;
         },

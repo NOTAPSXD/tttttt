@@ -1,30 +1,19 @@
-import { connectDB, User, Server, VPSServer } from "@/lib/db";
+import { connectDB, User, Server } from "@/lib/db";
 import UserManagement from "@/app/components/UserManagement";
 
 export default async function AdminUsersPage() {
     await connectDB();
     const usersData = await User.find().sort({ createdAt: -1 }).lean();
 
-    // Aggregation to count VirtFusion servers per user
+    // Aggregation to count provider servers per user (ownerId post-migration,
+    // userId for any legacy records not yet migrated).
     const serverCounts = await Server.aggregate([
-        { $group: { _id: "$userId", count: { $sum: 1 } } }
-    ]);
-
-    // Aggregation to count EC2 servers per user
-    const vpsServerCounts = await VPSServer.aggregate([
-        { $group: { _id: "$userId", count: { $sum: 1 } } }
+        { $group: { _id: { $ifNull: ["$ownerId", "$userId"] }, count: { $sum: 1 } } }
     ]);
 
     const countMap = new Map();
     serverCounts.forEach((s: any) => {
         if (s._id) countMap.set(s._id.toString(), s.count);
-    });
-    vpsServerCounts.forEach((s: any) => {
-        if (s._id) {
-            const userIdStr = s._id.toString();
-            const existing = countMap.get(userIdStr) || 0;
-            countMap.set(userIdStr, existing + s.count);
-        }
     });
 
     const users = usersData.map((u: any) => ({

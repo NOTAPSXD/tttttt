@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
 import { isValidObjectId } from "mongoose";
-import { vf } from "@/lib/virtfusion";
+import { getAdapterForServer } from "@/lib/providers";
+import { isAdmin } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import ServerControl from "@/app/components/ServerControl";
 import { Shield, ChevronLeft } from "lucide-react";
@@ -13,38 +14,37 @@ export default async function AdminVPSDetailPage({ params }: { params: Promise<{
     const session = await getServerSession(authOptions);
 
     if (!session) redirect("/login");
-    if (session.user.role !== 'ADMIN') redirect("/client");
+    if (!isAdmin(String(session.user.role))) redirect("/client");
 
     let server: any = null;
     try {
         await connectDB();
-        
+
         let serverDoc = null;
-        
-        // Try searching by MongoDB ID if it's a valid ObjectId
+
+        // Try by MongoDB ObjectId first, then by provider server id.
         if (isValidObjectId(id)) {
-            serverDoc = await Server.findById(id).populate('userId').lean();
+            serverDoc = await Server.findById(id).populate("ownerId").lean();
         }
-        
-        // If not found by ID (or not a valid ObjectId), try searching by VirtFusion ID
         if (!serverDoc) {
-            serverDoc = await Server.findOne({ virtfusionId: id }).populate('userId').lean();
+            serverDoc = await Server.findOne({ providerServerId: id }).populate("ownerId").lean();
         }
 
         if (serverDoc) {
-            server = { 
-                ...serverDoc, 
-                id: serverDoc._id.toString(),
-                userEmail: (serverDoc.userId as any)?.email
+            const owner = serverDoc.ownerId as any;
+            server = {
+                ...serverDoc,
+                id: String(serverDoc._id),
+                userEmail: owner?.email || (serverDoc.ownerEmail as string) || "System / Unassigned",
             };
         } else {
-            // Unassigned server (not in DB yet)
-            // We can still manage it using the VF ID directly
+            // Not mapped (yet): can still manage it with its provider id.
             server = {
-                virtfusionId: id,
-                id: id, // Fallback ID
+                providerServerId: id,
+                providerType: "virtfusion",
+                id,
                 name: "Unassigned Asset",
-                userEmail: "System / Unassigned"
+                userEmail: "System / Unassigned",
             };
         }
     } catch (e) {
@@ -54,8 +54,23 @@ export default async function AdminVPSDetailPage({ params }: { params: Promise<{
 
     if (!server) notFound();
 
-    // Initial Fetch from VirtFusion
-    const vfDetails = await vf.getServer(server.virtfusionId);
+    // Initial provider payload (legacy raw shape where available).
+    let vfDetails: any = null;
+    try {
+        const adapter = getAdapterForServer(server);
+        vfDetails = await adapter.getUpstream(server.providerServerId);
+        if (!vfDetails && server.providerType === "manual") {
+            vfDetails = {
+                name: server.name,
+                hostname: server.hostname || null,
+                memory: server.ram || null,
+                cpu: server.cpu || null,
+                network: { primary: { ipv4: server.ip ? [{ address: server.ip }] : [] } },
+            };
+        }
+    } catch (e) {
+        console.error("Provider detail fetch failed", e);
+    }
 
     if (!vfDetails) {
         return (
@@ -64,15 +79,14 @@ export default async function AdminVPSDetailPage({ params }: { params: Promise<{
                     <Shield className="w-10 h-10" />
                 </div>
                 <h1 className="text-4xl font-black text-white tracking-tighter uppercase">Infrastructure Error</h1>
-                <p className="text-zinc-500 max-w-md mx-auto font-medium">Could not establish a secure connection to the virtualization API for server asset <b>{server.virtfusionId}</b>.</p>
+                <p className="text-zinc-500 max-w-md mx-auto font-medium">Could not establish a secure connection to the virtualization API for server asset <b>{server.providerServerId}</b>.</p>
                 <Link href="/admin" className="inline-flex items-center gap-2 px-8 py-3 bg-white text-black rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all">
                     <ChevronLeft className="w-4 h-4" /> Return to Command Center
                 </Link>
             </div>
-        )
+        );
     }
 
-    // Merge metadata
     const initialData = { ...vfDetails, name: server.name };
 
     return (

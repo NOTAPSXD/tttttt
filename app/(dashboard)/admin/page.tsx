@@ -1,95 +1,100 @@
 import { connectDB, User, Server } from "@/lib/db";
-import { vf } from "@/lib/virtfusion";
-import { Users, Server as ServerIcon, CreditCard, Activity, TrendingUp, Database, Zap, Shield, AlertTriangle } from "lucide-react";
+import { getAdapter } from "@/lib/providers";
+import { getSyncCounts } from "@/lib/sync";
+import { isAdmin, normalizeRole } from "@/lib/permissions";
+import { Users, Server as ServerIcon, Activity, TrendingUp, Database, Zap, Shield, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import ServerAssigner from "@/app/components/ServerAssigner";
+import OrphanedServers from "@/app/components/OrphanedServers";
 
 export default async function AdminDashboard() {
     await connectDB();
 
-    // 1. Fetch Users and calculate server counts
-    const usersData = await User.find().lean();
-
-    // Aggregation to count servers per user
-    const serverCounts = await Server.aggregate([
-        { $group: { _id: "$userId", count: { $sum: 1 } } }
-    ]);
-    const countMap = new Map(serverCounts.map((s: any) => [s._id.toString(), s.count]));
+    // 1. Users, counted via a single $group aggregation on the owner field.
+    const usersData = await User.find().select("name email role status suspended").lean();
+    const serverCounts = await Server.aggregate([{ $group: { _id: "$ownerId", count: { $sum: 1 } } }]);
+    const countMap = new Map(serverCounts.map((s: any) => [s._id ? String(s._id) : null, s.count]));
 
     const users = usersData.map((u: any) => ({
-        ...u,
-        id: u._id.toString(),
-        _id: u._id.toString(),
-        _count: {
-            servers: countMap.get(u._id.toString()) || 0
-        }
+        id: String(u._id),
+        _id: String(u._id),
+        name: u.name || "User",
+        email: u.email || "",
+        role: normalizeRole(u.role),
+        status: u.suspended ? "suspended" : u.status || "active",
+        _count: { servers: countMap.get(String(u._id)) || 0 },
     }));
 
-    const adminCount = users.filter((u: any) => u.role === 'ADMIN').length;
-    const clientCount = users.filter((u: any) => u.role === 'CLIENT').length;
+    const adminCount = users.filter((u: any) => isAdmin(u.role)).length;
+    const clientCount = users.length - adminCount;
 
-    // Fetch DB Assignments
+    // 2. DB assignments, with the assigned owner populated for the assigner.
     let dbServers: any[] = [];
     try {
-        const rawDbServers = await Server.find().populate('userId').lean();
-
-        // Transform for compatibility with existing code structure (user property)
+        const rawDbServers = await Server.find().populate("ownerId").lean();
         dbServers = rawDbServers.map((s: any) => ({
             ...s,
-            id: s._id.toString(),
-            _id: s._id.toString(),
-            user: s.userId ? {
-                ...s.userId,
-                id: s.userId._id.toString(),
-                _id: s.userId._id.toString()
-            } : null,
-            userId: s.userId ? s.userId._id.toString() : null
+            id: String(s._id),
+            _id: String(s._id),
+            user: s.ownerId
+                ? { ...s.ownerId, id: String(s.ownerId._id), _id: String(s.ownerId._id) }
+                : null,
+            userId: s.ownerId ? String(s.ownerId._id) : null,
         }));
     } catch (e) {
         console.error("DB Error", e);
     }
 
-    // Fetch from VF
+    // 3. Provider catalog (raw ids/names used to populate the master list).
     let vfServers: any[] = [];
-    let runningCount = 0;
-    let totalCpu = 0;
-    let totalRam = 0;
-
     try {
-        const data = await vf.getServers();
-        vfServers = data || [];
+        const adapter = getAdapter("virtfusion");
+        vfServers = (await adapter.listUpstream()) || [];
+    } catch (e) {
+        console.error("VF Error", e);
+    }
 
-        // Calculate stats
-        vfServers.forEach(server => {
-            if (server.state?.running) runningCount++;
-            const cpuCores = parseInt(server.cpu?.match(/\d+/)?.[0] || "0");
-            const ramMB = parseInt(server.memory?.match(/\d+/)?.[0] || "0");
-            totalCpu += cpuCores;
-            totalRam += ramMB;
-        });
-    } catch (e) { }
+    // 4. Sync-derived counts — accurate totals without per-server round trips.
+    let counts = { total: 0, mappedActive: 0, unassigned: 0, orphaned: 0, manual: 0 };
+    try {
+        counts = await getSyncCounts();
+    } catch (e) {
+        console.error("Sync counts error", e);
+    }
+    const unassignedCount = counts.unassigned;
+    const runningCount = dbServers.filter(
+        (s: any) => s.status === "RUNNING" && !s.providerDeletedAt
+    ).length;
 
-    // Merge Data
-    const dbServerMap = new Map(dbServers.map(s => [s.virtfusionId, s]));
+    // 5. Merge the provider catalog against mapped assignments.
+    const dbServerMap = new Map(
+        dbServers.filter((s: any) => !s.providerDeletedAt).map((s: any) => [s.providerServerId, s])
+    );
 
-    const combinedServers = vfServers.map(vf => {
+    const combinedServers = vfServers.map((vf: any) => {
         const db = dbServerMap.get(vf.id);
         return {
             ...vf,
             assignedTo: db?.user || null,
             localId: db?.id || null,
-            renewalDate: db?.renewalDate || null
+            renewalDate: db?.renewalDate || null,
         };
     });
 
-    const unassignedCount = vfServers.length - dbServers.length;
+    const totalCpu = vfServers.reduce(
+        (acc, s) => acc + (parseInt(String(s.cpu || "").match(/\d+/)?.[0] || "0") || 0),
+        0
+    );
+    const totalRam = vfServers.reduce(
+        (acc, s) => acc + (parseInt(String(s.memory || "").match(/\d+/)?.[0] || "0") || 0),
+        0
+    );
+
+    const serializedUsers = users;
+    const serializedCombinedServers = JSON.parse(JSON.stringify(combinedServers));
 
     // Helper for consistency
     const cardBaseClass = "bg-[#09090b] border border-zinc-800 p-5 rounded-xl transition-all duration-300 hover:border-zinc-700";
-
-    // Serialize users for Client Component
-    const serializedUsers = JSON.parse(JSON.stringify(users));
-    const serializedCombinedServers = JSON.parse(JSON.stringify(combinedServers));
 
     return (
         <div className="space-y-8 animate-slide-up pb-20 md:pb-10 max-w-[1600px] mx-auto">
@@ -144,10 +149,10 @@ export default async function AdminDashboard() {
                     </div>
                     <p className="text-sm text-zinc-500 font-medium">Total Servers</p>
                     <div className="flex items-baseline gap-2 mt-1">
-                        <h3 className="text-3xl font-bold text-white">{vfServers.length}</h3>
+                        <h3 className="text-3xl font-bold text-white">{counts.total}</h3>
                     </div>
                     <div className="mt-4 flex items-center gap-3 text-xs text-zinc-500 border-t border-zinc-800/50 pt-3">
-                        <span className="text-zinc-300">{dbServers.length} Assigned</span>
+                        <span className="text-zinc-300">{counts.mappedActive} Assigned</span>
                         <span className="text-zinc-500">•</span>
                         <span className="text-zinc-300">{unassignedCount} Unassigned</span>
                     </div>
@@ -170,7 +175,7 @@ export default async function AdminDashboard() {
                     <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500 border-t border-zinc-800/50 pt-3">
                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                         <span className="text-emerald-500 font-medium">
-                            {vfServers.length > 0 ? ((runningCount / vfServers.length) * 100).toFixed(0) : 0}% Uptime Rate
+                            {counts.total > 0 ? ((runningCount / counts.total) * 100).toFixed(0) : 0}% Uptime Rate
                         </span>
                     </div>
                 </div>
@@ -256,16 +261,6 @@ export default async function AdminDashboard() {
 
                     <button className={`${cardBaseClass} w-full flex items-center gap-4 group hover:bg-zinc-900 cursor-pointer text-left`}>
                         <div className="w-10 h-10 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-zinc-700 transition-colors">
-                            <CreditCard className="w-5 h-5 text-zinc-300" />
-                        </div>
-                        <div>
-                            <p className="text-white font-medium text-sm">Billing</p>
-                            <p className="text-xs text-zinc-500">View invoices & payments</p>
-                        </div>
-                    </button>
-
-                    <button className={`${cardBaseClass} w-full flex items-center gap-4 group hover:bg-zinc-900 cursor-pointer text-left`}>
-                        <div className="w-10 h-10 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-zinc-700 transition-colors">
                             <Shield className="w-5 h-5 text-zinc-300" />
                         </div>
                         <div>
@@ -288,7 +283,7 @@ export default async function AdminDashboard() {
                         </div>
                         <div className="flex gap-2 text-xs font-mono">
                             <div className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
-                                {dbServers.length} ASSIGNED
+                                {counts.mappedActive} ASSIGNED
                             </div>
                             <div className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-500">
                                 {unassignedCount} AVAILABLE
@@ -300,6 +295,12 @@ export default async function AdminDashboard() {
                 <div className="p-0 overflow-x-auto">
                     <ServerAssigner servers={serializedCombinedServers} users={serializedUsers} />
                 </div>
+            </div>
+
+            {/* Orphaned Assignments - servers deleted on the provider but still in the DB */}
+            <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-white mb-2">Database Cleanup</h3>
+                <OrphanedServers />
             </div>
         </div>
     )

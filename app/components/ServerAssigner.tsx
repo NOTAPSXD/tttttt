@@ -104,7 +104,7 @@ export default function ServerAssigner({ servers: initialServers, users }: { ser
                     return {
                         ...s,
                         assignedTo: user ? { id: user.id, name: user.name, email: user.email } : null,
-                        localId: res.data.id
+                        localId: res.data.server?.id || res.data.id || s.localId
                     };
                 }
                 return s;

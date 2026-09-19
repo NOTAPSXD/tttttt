@@ -11,7 +11,7 @@ export default function BottomNav() {
 
     const navItems = [
         { icon: Home, label: 'Dashboard', href: '/client' },
-        { icon: Server, label: 'Servers', href: '/client' },
+        { icon: Server, label: 'Servers', href: '/client/servers' },
         { icon: Bell, label: 'Notifications', href: '/client/notifications', badge: unreadCount },
         { icon: Settings, label: 'Settings', href: '/client/settings' },
     ];

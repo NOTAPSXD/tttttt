@@ -101,7 +101,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             browserNotif.onclick = () => {
                 window.focus();
                 if (notification.serverId) {
-                    window.location.href = `/client/vps/${notification.serverId}`;
+                    window.location.href = `/client/servers/${notification.serverId}`;
                 }
                 browserNotif.close();
             };

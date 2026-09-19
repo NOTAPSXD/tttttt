@@ -2,72 +2,61 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
-import { VPSServer } from "@/lib/models";
-import { vf } from "@/lib/virtfusion";
-import { getAwsClients, fetchCpuUtilization } from "@/lib/aws";
-import { DescribeInstancesCommand } from "@aws-sdk/client-ec2";
+import { getAdapterForServer } from "@/lib/providers";
+import { isAdmin } from "@/lib/permissions";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const dynamic = "force-dynamic";
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
     await connectDB();
 
-    const query = session.user.role === 'ADMIN'
-        ? { _id: id }
-        : { _id: id, userId: session.user.id };
+    const admin = isAdmin(String(session.user.role));
+    const query = admin ? { _id: id } : { _id: id, ownerId: session.user.id };
 
-    let server: any = await Server.findOne(query);
-    let isCloud = false;
-
-    if (!server) {
-        server = await VPSServer.findOne(query);
-        isCloud = true;
-    }
-
+    const server: any = await Server.findOne(query);
     if (!server) return new NextResponse("Not Found", { status: 404 });
 
-    if (!isCloud) {
-        const details = await vf.getServer(server.virtfusionId);
-        if (!details) return new NextResponse("Error fetching details", { status: 502 });
-        return NextResponse.json(details);
-    } else {
-        try {
-            const { ec2 } = getAwsClients(server.region);
-            const cmd = new DescribeInstancesCommand({ InstanceIds: [server.instanceId] });
-            const res = await ec2.send(cmd);
-            
-            const instance = res.Reservations?.[0]?.Instances?.[0];
-            const isRunning = instance?.State?.Name === 'running';
-            const cpuStat = await fetchCpuUtilization(server.region, server.instanceId);
+    const adapter = getAdapterForServer(server);
 
-            // Mock VirtFusion structure
-            const data = {
-                name: server.name,
-                hostname: instance?.PrivateDnsName || server.instanceId,
-                state: {
-                    status: isRunning ? 'running' : 'offline',
-                    running: isRunning,
-                    cpu: `${cpuStat || 0} %`,
+    try {
+        // Prefer the raw VirtFusion payload so the legacy client UI keeps
+        // reading network/state shapes unchanged; manual hosts fall back to
+        // a synthesized payload from the DB record + health state.
+        const raw = await adapter.getUpstream(server.providerServerId);
+        const state = await adapter.getState(server.providerServerId);
+
+        if (raw) {
+            return NextResponse.json(raw);
+        }
+
+        return NextResponse.json({
+            name: server.name,
+            hostname: server.hostname || null,
+            memory: server.ram || null,
+            cpu: server.cpu || null,
+            state: state
+                ? {
+                    status: state.status,
+                    running: state.running,
+                    cpu: `${state.cpuPct} %`,
+                    memory: state.memUsedMb ? `${state.memUsedMb} MB` : "0 MB",
                     network: {
                         primary: {
-                            traffic: { rx: 0, tx: 0, total: 0 }
-                        }
-                    }
-                },
-                network: {
-                    primary: {
-                        ipv4: [{ address: instance?.PublicIpAddress || server.ip || 'Pending' }],
-                        limit: 'Unlimited'
-                    }
+                            traffic: { rx: state.traffic.rx, tx: state.traffic.tx, total: state.traffic.total },
+                        },
+                    },
                 }
-            };
-            return NextResponse.json(data);
-        } catch (e: any) {
-            console.error("AWS Stats Error:", e);
-            return new NextResponse(e.message, { status: 500 });
-        }
+                : null,
+            network: {
+                primary: { ipv4: server.ip ? [{ address: server.ip }] : [], limit: null },
+            },
+        });
+    } catch (e) {
+        console.error("stats error:", e);
+        return NextResponse.json({ error: "Failed to fetch server statistics" }, { status: 502 });
     }
 }
-

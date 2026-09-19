@@ -4,29 +4,32 @@ import { useState } from "react";
 import { Power, RotateCw, Square, Loader2 } from "lucide-react";
 
 interface QuickActionsProps {
-    serverId: number;
-    virtfusionId: number;
+    serverId: string;
     isRunning: boolean;
 }
 
-export default function QuickActions({ serverId, virtfusionId, isRunning }: QuickActionsProps) {
+const ACTION_MAP: Record<string, string> = {
+    start: "boot",
+    stop: "shutdown",
+    restart: "restart",
+};
+
+export default function QuickActions({ serverId, isRunning }: QuickActionsProps) {
     const [loading, setLoading] = useState<string | null>(null);
     const [status, setStatus] = useState(isRunning);
 
     const handleAction = async (action: "start" | "stop" | "restart") => {
         setLoading(action);
         try {
-            const response = await fetch(`/api/servers/${serverId}/control`, {
+            const response = await fetch(`/api/vps/${serverId}/power`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, virtfusionId }),
+                body: JSON.stringify({ action: ACTION_MAP[action] }),
             });
 
             if (response.ok) {
-                const data = await response.json();
                 if (action === "start") setStatus(true);
                 if (action === "stop") setStatus(false);
-                // Show success notification
             }
         } catch (error) {
             console.error("Action failed:", error);
