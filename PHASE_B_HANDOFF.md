@@ -38,8 +38,9 @@ Raw VirtFusion payload shapes are preserved via `getUpstream()`/`listUpstream()`
 
 ## Known remaining items
 
+- **Build verified OK** with a Node v22.23.2 runtime (`next build` completes, all routes dynamic). The repo's default Node is v18.19.1 — upgrade it (Next 16 needs ≥20.9) or use `npx node@22`-style runtime to build locally.
+- During static prerender of the auth pages, a benign `Failed to fetch logs ... MONGODB_URI` error is printed and swallowed (those pages bake without a DB and are server-rendered dynamic only in dev). No runtime impact with env set.
 - `UserManagement.tsx` shows **mock/fabricated** login activity rows (fixed ids/timestamps) in the user detail modal — replace with real login-history data in Phase C.
-- `next build` blocked locally: Node v18.19.1 < Next 16 requirement (≥20.9).
 - No MONGODB_URI / VIRTFUSION credentials locally → provider calls untested at runtime.
 - `admin/users` per-user server counts use `$ifNull: ["$ownerId", "$userId"]` so counts are correct pre- and post-migration.
 
