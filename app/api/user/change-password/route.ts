@@ -5,6 +5,7 @@ import { connectDB, User } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { logAudit, notifyUser } from "@/lib/audit";
 import { parseBody, changePasswordSchema } from "@/lib/validation";
+import { revokeAllUserSessions } from "@/lib/sessions";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
 
         // All sessions (including this one) self-invalidate on the next
         // request because the JWT callback compares the stored password hash.
+        // Also explicitly end the tracked device sessions.
+        revokeAllUserSessions(String(userId)).catch(() => {});
         return NextResponse.json({ success: true });
     } catch (e) {
         console.error("change-password error:", e);

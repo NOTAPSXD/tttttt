@@ -81,3 +81,65 @@ export const enableTwoFaSchema = z.object({
 export const disableTwoFaSchema = z.object({
     code: otpSchema,
 });
+
+// ── Server / admin route schemas ──────────────────────────────
+
+export const powerActionSchema = z.object({
+    action: z.enum(["boot", "shutdown", "powerOff", "restart"]),
+});
+
+export const serverSettingsSchema = z.object({
+    name: z.string().trim().min(1, { error: "Name is required" }).max(50, { error: "Name too long (max 50 characters)" }),
+    hostname: z
+        .string()
+        .trim()
+        .max(100, { error: "Hostname too long" })
+        .optional()
+        .or(z.literal("")),
+});
+
+export const renameSchema = z.object({
+    name: z.string().trim().min(1, { error: "Name is required" }).max(50, { error: "Name too long (max 50 characters)" }),
+});
+
+export const adminRoleSchema = z.enum(["CLIENT", "SUPPORT", "ADMIN", "SUPER_ADMIN"]);
+
+export const adminCreateUserSchema = z.object({
+    name: z.string().trim().min(1, { error: "Name is required" }).max(120),
+    email: emailSchema,
+    password: passwordSchema,
+    role: adminRoleSchema.optional(),
+});
+
+export const adminUpdateUserSchema = z.object({
+    name: z.string().trim().min(1, { error: "Name is required" }).max(120),
+    email: emailSchema,
+    role: adminRoleSchema.optional(),
+});
+
+export const setPasswordSchema = z.object({
+    password: passwordSchema,
+});
+
+export const sendMailSchema = z.object({
+    recipient: emailSchema.optional().or(z.literal("")),
+    userId: z.string().trim().min(1).optional().or(z.literal("")),
+    subject: z.string().trim().min(1, { error: "Subject is required" }).max(200),
+    content: z.string().trim().min(1, { error: "Content is required" }).max(50000),
+});
+
+export const unassignSchema = z.object({
+    reason: z.string().trim().max(200).optional(),
+});
+
+export const bookmarkSchema = z.object({
+    bookmarked: z.boolean(),
+});
+
+export const assignSchema = z.object({
+    providerServerId: z.string().regex(/^\d+$/, { error: "Invalid server id" }).optional(),
+    virtfusionId: z.string().regex(/^\d+$/, { error: "Invalid server id" }).optional(),
+    userId: z.string().trim().min(1, { error: "A user must be selected" }),
+    reason: z.string().trim().max(200).optional(),
+    notify: z.boolean().optional(),
+});

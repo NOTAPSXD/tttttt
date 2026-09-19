@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectDB, User, Server } from "@/lib/db";
 import { isAdmin, normalizeRole, requireSuperAdmin } from "@/lib/permissions";
 import bcrypt from "bcryptjs";
+import { parseBody, adminCreateUserSchema } from "@/lib/validation";
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -47,17 +48,14 @@ export async function POST(req: Request) {
     if (!session || !isAdmin(String(session.user.role))) return new NextResponse("Unauthorized", { status: 403 });
 
     await connectDB();
-    const { name, email, password, role } = await req.json().catch(() => ({}));
-    if (!email || !password) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const parsed = await parseBody(req, adminCreateUserSchema);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { name, email, password, role } = parsed.data;
 
     // Normalize email casing to prevent duplicate-account confusion.
-    const normalizedEmail = String(email).trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-        return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-    }
-    if (password.length < 8) return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    const normalizedEmail = email.toLowerCase();
 
-    const chosenRole = role ? String(role).toUpperCase() : "CLIENT";
+    const chosenRole = role ?? "CLIENT";
     if (!VALID_ROLES.includes(chosenRole)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     // Only SUPER_ADMIN can grant SUPER_ADMIN.
     if (chosenRole === "SUPER_ADMIN" && !requireSuperAdmin(String(session.user.role))) {

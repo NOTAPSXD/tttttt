@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 import { parseBody, resetPasswordSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
+import { revokeAllUserSessions } from "@/lib/sessions";
 
 export async function POST(req: Request) {
     const parsed = await parseBody(req, resetPasswordSchema);
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
         const user = await User.findByIdAndUpdate(resetToken.userId, { password: hashed });
 
         if (user) {
+            // Escalating a possibly-compromised account: notify the owner.
+            revokeAllUserSessions(String(resetToken.userId)).catch(() => {});
             // Escalating a possibly-compromised account: notify the owner.
             sendEmail(
                 user.email,

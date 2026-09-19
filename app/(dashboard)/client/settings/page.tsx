@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession, signOut } from "next-auth/react";
-import { Loader2, Lock, Shield, Key, Tag, Hash, ShieldCheck, QrCode, Copy, Check } from "lucide-react";
+import { Loader2, Lock, Shield, Key, Tag, Hash, ShieldCheck, QrCode, Copy, Check, Monitor, Smartphone, Globe, Clock } from "lucide-react";
 import QRCode from "qrcode";
 
 export default function ClientSettingsPage() {
@@ -153,6 +153,8 @@ export default function ClientSettingsPage() {
                     </div>
 
                     <TwoFactorCard />
+
+                    <SessionsCard />
                 </div>
             </div>
         </div>
@@ -394,6 +396,124 @@ function TwoFactorCard() {
             {error && (
                 <p className="mt-4 text-xs text-red-400 font-bold">{error}</p>
             )}
+        </div>
+    );
+}
+
+interface SessionRow {
+    id: string;
+    deviceLabel: string;
+    userAgent: string;
+    ip: string;
+    lastSeenAt: string;
+    createdAt: string;
+    current: boolean;
+}
+
+function SessionsCard() {
+    const [sessions, setSessions] = useState<SessionRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState<string | null>(null);
+    const [error, setError] = useState("");
+
+    const load = () => {
+        setLoading(true);
+        axios
+            .get("/api/user/sessions")
+            .then((res) => setSessions(res.data?.sessions || []))
+            .catch(() => setError("Failed to load active sessions"))
+            .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    const revoke = async (id: string) => {
+        setBusy(id);
+        setError("");
+        try {
+            await axios.post(`/api/user/sessions/${id}/revoke`);
+            setSessions((prev) => prev.filter((s) => s.id !== id));
+        } catch (e: any) {
+            setError(e.response?.data?.error || "Failed to revoke session");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const isMobile = (label: string) => /Android|iOS/i.test(label);
+
+    return (
+        <div className="bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-2 mb-5">
+                <Shield className="w-5 h-5 text-violet-400" />
+                <h2 className="text-xl font-black text-zinc-100">Active Sessions</h2>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                    <Loader2 className="animate-spin w-4 h-4" /> Loading sessions…
+                </div>
+            ) : sessions.length === 0 ? (
+                <p className="text-sm text-zinc-500">No active sessions found.</p>
+            ) : (
+                <div className="space-y-3">
+                    {sessions.map((s) => {
+                        const mobile = isMobile(s.deviceLabel);
+                        return (
+                            <div
+                                key={s.id}
+                                className="flex items-center justify-between gap-4 border border-zinc-800/60 rounded-xl p-4"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-10 h-10 shrink-0 rounded-xl bg-zinc-800/80 flex items-center justify-center">
+                                        {mobile ? (
+                                            <Smartphone className="w-5 h-5 text-zinc-400" />
+                                        ) : (
+                                            <Monitor className="w-5 h-5 text-zinc-400" />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-zinc-100 truncate">
+                                                {s.deviceLabel}
+                                            </p>
+                                            {s.current && (
+                                                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                                                    This device
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-zinc-500">
+                                            {s.ip && (
+                                                <span className="flex items-center gap-1">
+                                                    <Globe className="w-3 h-3" /> {s.ip}
+                                                </span>
+                                            )}
+                                            <span className="flex items-center gap-1">
+                                                <Clock className="w-3 h-3" />
+                                                Last seen {s.lastSeenAt ? new Date(s.lastSeenAt).toLocaleString() : "unknown"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => revoke(s.id)}
+                                    disabled={busy === s.id}
+                                    className="shrink-0 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {busy === s.id ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : "Sign out"}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {error && <p className="mt-4 text-xs text-red-400 font-bold">{error}</p>}
         </div>
     );
 }

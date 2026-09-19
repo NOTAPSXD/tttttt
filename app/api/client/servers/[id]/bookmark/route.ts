@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { isValidObjectId } from "mongoose";
 import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
+import { parseBody, bookmarkSchema } from "@/lib/validation";
 
 export async function PATCH(
     req: NextRequest,
@@ -20,8 +21,9 @@ export async function PATCH(
             return NextResponse.json({ error: "Invalid server id" }, { status: 400 });
         }
 
-        const body = await req.json();
-        const bookmarked = !!body.bookmarked;
+        const parsed = await parseBody(req, bookmarkSchema);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        const bookmarked = parsed.data.bookmarked;
 
         await connectDB();
 

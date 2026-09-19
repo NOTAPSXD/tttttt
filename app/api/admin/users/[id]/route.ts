@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB, User, Server } from "@/lib/db";
 import { isAdmin } from "@/lib/permissions";
+import { parseBody, adminUpdateUserSchema } from "@/lib/validation";
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -52,14 +53,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         await connectDB();
         const { id } = await params;
-        const body = await request.json().catch(() => ({}));
-        const { name, email, role } = body;
+        const parsed = await parseBody(request, adminUpdateUserSchema);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        const { name, email, role } = parsed.data;
 
-        if (!name || !email) {
-            return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
-        }
-
-        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedEmail = email.toLowerCase();
 
         const existingUser = await User.findOne({
             $or: [{ email: normalizedEmail }, { emailLower: normalizedEmail.toLowerCase() }],

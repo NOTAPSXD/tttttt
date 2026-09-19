@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
 import { unassignServer } from "@/lib/ownership";
 import { isAdmin } from "@/lib/permissions";
+import { parseBody, unassignSchema } from "@/lib/validation";
 
 /**
  * Soft unassign: detach ownership and close the active assignment. The server
@@ -16,8 +17,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     try {
         await connectDB();
-        const body = await req.json().catch(() => ({}));
-        const reason = typeof body.reason === "string" && body.reason ? body.reason.slice(0, 200) : undefined;
+        const parsed = await parseBody(req, unassignSchema);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        const reason = parsed.data.reason || undefined;
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
 
         const result = await unassignServer({

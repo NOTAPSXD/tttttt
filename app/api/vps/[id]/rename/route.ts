@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
 import { isAdmin } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { parseBody, renameSchema } from "@/lib/validation";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -12,10 +13,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         await connectDB();
         const { id } = await params;
-        const { name } = await req.json().catch(() => ({}));
-
-        if (!name || name.trim().length === 0) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-        if (name.length > 50) return NextResponse.json({ error: "Name too long (max 50 characters)" }, { status: 400 });
+        const parsed = await parseBody(req, renameSchema);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        const { name } = parsed.data;
 
         const server: any = await Server.findById(id);
         if (!server) return NextResponse.json({ error: "Server not found" }, { status: 404 });

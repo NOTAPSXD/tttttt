@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB, Server, User } from "@/lib/db";
-import { getAdapterForServer, getCapabilities, ProviderError } from "@/lib/providers";
+import { getAdapterForServer, getCapabilities } from "@/lib/providers";
 import { isAdmin } from "@/lib/permissions";
 import { sendEmail } from "@/lib/email";
 import { notifyUser, logAudit, providerErrorToResponse } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
+import { parseBody, powerActionSchema } from "@/lib/validation";
 
 const VALID_ACTIONS = ["boot", "shutdown", "powerOff", "restart"] as const;
 
@@ -21,7 +22,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     await connectDB();
-    const { action } = await req.json().catch(() => ({}));
+    const parsed = await parseBody(req, powerActionSchema);
+    if (!parsed.ok) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { action } = parsed.data;
 
     if (!VALID_ACTIONS.includes(action)) {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -30,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const admin = isAdmin(String(session.user.role));
     const query = admin ? { _id: id } : { _id: id, ownerId: session.user.id };
 
-    const server: any = await Server.findOne(query);
+    const server = await Server.findOne(query);
     if (!server) return new NextResponse("Not Found", { status: 404 });
 
     if (server.suspended && !admin) {

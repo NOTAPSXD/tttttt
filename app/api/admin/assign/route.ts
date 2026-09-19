@@ -5,6 +5,7 @@ import { connectDB, Server } from "@/lib/db";
 import { assignServer } from "@/lib/ownership";
 import { getAdapter } from "@/lib/providers";
 import { isAdmin } from "@/lib/permissions";
+import { parseBody, assignSchema } from "@/lib/validation";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
@@ -12,28 +13,25 @@ export async function POST(req: Request) {
 
     try {
         await connectDB();
-        const body = await req.json().catch(() => ({}));
+        const parsed = await parseBody(req, assignSchema);
+        if (!parsed.ok) return new NextResponse(parsed.error, { status: 400 });
+        const { providerServerId, virtfusionId, userId, reason, notify } = parsed.data;
 
-        const providerServerId = String(body.providerServerId || body.virtfusionId || "").trim();
-        const userId = String(body.userId || "").trim();
-        const reason = typeof body.reason === "string" && body.reason ? body.reason.slice(0, 200) : undefined;
-        const notify = body.notify !== false;
-
-        if (!providerServerId || !userId) return new NextResponse("Missing fields", { status: 400 });
-        if (!/^\d+$/.test(providerServerId)) return new NextResponse("Invalid server id", { status: 400 });
+        const resolvedId = providerServerId || virtfusionId;
+        if (!resolvedId) return new NextResponse("Missing server id", { status: 400 });
 
         // Look up the server record first; if it isn't mapped yet, create it
         // from the provider catalog so assignments work for brand-new assets.
-        let server = await Server.findOne({ providerServerId });
+        let server = await Server.findOne({ providerServerId: resolvedId });
         if (!server) {
             const adapter = getAdapter("virtfusion");
-            const upstream = await adapter.getUpstream(providerServerId);
+            const upstream = await adapter.getUpstream(resolvedId);
             if (!upstream) return new NextResponse("Server not found on the provider", { status: 404 });
 
             const name = upstream.name || "Unknown Server";
             const ip = upstream.network?.primary?.ipv4?.[0]?.address || upstream.network?.primary?.ipv4?.[0] || "";
             server = await Server.create({
-                providerServerId,
+                providerServerId: resolvedId,
                 providerType: "virtfusion",
                 name: String(name),
                 ip,

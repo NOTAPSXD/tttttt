@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectDB, Server } from "@/lib/db";
 import { isAdmin } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { parseBody, serverSettingsSchema } from "@/lib/validation";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -12,11 +13,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         await connectDB();
         const { id } = await params;
-        const { name, hostname } = await req.json().catch(() => ({}));
-
-        if (!name || name.trim().length === 0) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-        if (name.length > 50) return NextResponse.json({ error: "Name too long (max 50 characters)" }, { status: 400 });
-        if (hostname && String(hostname).length > 100) return NextResponse.json({ error: "Hostname too long" }, { status: 400 });
+        const parsed = await parseBody(req, serverSettingsSchema);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        const { name, hostname } = parsed.data;
 
         const server: any = await Server.findById(id);
         if (!server) return NextResponse.json({ error: "Server not found" }, { status: 404 });
@@ -29,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
 
         const patch: Record<string, any> = { name: name.trim() };
-        if (hostname && typeof hostname === "string") patch.hostname = hostname.trim();
+        if (hostname && typeof hostname === "string" && hostname.trim()) patch.hostname = hostname.trim();
 
         const updatedServer = await Server.findByIdAndUpdate(id, patch, { new: true });
 

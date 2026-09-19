@@ -5,6 +5,7 @@ import { connectDB, LoginHistory, User } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { verifyTotp, consumeRecoveryCode, storedTotpSecret } from "@/lib/otp";
+import { registerSession, newSessionId, hashSession, sessionActive } from "@/lib/sessions";
 
 function clientIp(req: Request | undefined): string | undefined {
     if (!req) return undefined;
@@ -114,11 +115,15 @@ export const authOptions: NextAuthOptions = {
                 resetRateLimit(`login_${emailLower}`).catch(() => {});
                 await recordLogin({ user, ip, ua, status: "success" });
 
+                const sessionId = newSessionId();
+                await registerSession({ userId: user._id.toString(), sessionId, ip, ua });
+
                 return {
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    sessionId,
                 };
             }
         })
@@ -154,6 +159,11 @@ export const authOptions: NextAuthOptions = {
 
                 user.id = dbUser._id.toString();
                 (user as any).role = dbUser.role;
+                (user as any).sessionId = newSessionId();
+                await registerSession({
+                    userId: String(dbUser._id),
+                    sessionId: (user as any).sessionId,
+                });
 
                 // Record last login (non-blocking)
                 User.updateOne({ _id: dbUser._id }, { $set: { lastLogin: new Date() } }).catch(() => {});
@@ -164,6 +174,11 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.role = user.role;
                 token.id = user.id;
+
+                // Track this login as a server-side session (device management).
+                if (user.sessionId) {
+                    token.sessionHash = hashSession(String(user.sessionId));
+                }
 
                 // Initialize the password hash in the token
                 await connectDB();
@@ -178,6 +193,11 @@ export const authOptions: NextAuthOptions = {
                     // Password changed! Invalidate session
                     return {};
                 }
+                // Verify the server-side session row still exists and is not revoked.
+                if (token.sessionHash && !(await sessionActive(token.sessionHash))) {
+                    // Session was revoked or expired — drop this session.
+                    return {};
+                }
             }
             return token;
         },
@@ -188,6 +208,7 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 (session.user as any).role = token.role;
                 (session.user as any).id = token.id;
+                (session.user as any).sessionHash = token.sessionHash;
             }
             return session;
         }
