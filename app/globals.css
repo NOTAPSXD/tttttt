@@ -1,0 +1,372 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  /* ── Design tokens ── */
+  --color-surface:        #11141a;
+  --color-surface-bg:     #0a0c10;
+  --color-surface-border: #1f242d;
+  --color-surface-2:      #11141a;
+  --color-surface-3:      #141820;
+  --color-surface-4:      #1a1f2a;
+  --color-stroke:         #1f242d;
+  --color-stroke-strong:  #2c3448;
+  --color-panel-text:     #e6e8ec;
+  --color-panel-muted:    #8b93a1;
+  --color-panel-faint:    #47506a;
+
+  /* Brand blue / accent */
+  --color-accent-blue:      #3b82f6;
+  --color-primary-blue:     #3b82f6;
+  --color-primary-blue-dim: #2563eb;
+  --color-primary-blue-soft:rgba(59,130,246,0.12);
+
+  /* Semantics */
+  --color-success-green: #22c55e;
+  --color-success-soft:  rgba(34,197,94,0.12);
+  --color-danger-red:    #ef4444;
+  --color-danger-soft:   rgba(239,68,68,0.12);
+  --color-warning-amber: #f59e0b;
+  --color-warning-soft:  rgba(245,158,11,0.12);
+  --color-info-blue:     #3b82f6;
+  --color-inbound:       #3b82f6;
+  --color-outbound:      #f97316;
+}
+
+:root {
+  --background: #0a0c10;
+  --foreground: #e6e8ec;
+
+  --card: #11141a;
+  --card-foreground: #e6e8ec;
+
+  --popover: #11141a;
+  --popover-foreground: #e6e8ec;
+
+  --primary: #e6e8ec;
+  --primary-foreground: #0a0c10;
+
+  --secondary: #141820;
+  --secondary-foreground: #e6e8ec;
+
+  --muted: #141820;
+  --muted-foreground: #8b93a1;
+
+  --accent: #1a1f2a;
+  --accent-foreground: #e6e8ec;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #e6e8ec;
+
+  --border: #1f242d;
+  --input:  #1f242d;
+  --ring:   #3b82f6;
+}
+
+/* ── Base ── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #0a0c10;
+  color: #e8edf5;
+  font-feature-settings: "cv11", "salt", "ss01";
+  letter-spacing: -0.01em;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(59,127,245,0.25);
+  color: #e8edf5;
+}
+
+/* ── Keyframes ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-left {
+  from { opacity: 0; transform: translateX(-100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(1.7); opacity: 0;   }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Utility animation classes ── */
+.anim-fade-in   { animation: fade-in  0.3s ease both; }
+.anim-fade-up   { animation: fade-up  0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-fade-down { animation: fade-down 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-scale-in  { animation: scale-in 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-slide-left{ animation: slide-left 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── Stagger helpers ── */
+.stagger-1 { animation-delay: 50ms;  }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+
+/* ── Glass ── */
+.glass {
+  background: rgba(14,17,24,0.7);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.glass-light {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Shimmer skeleton ── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.09) 40%,
+    rgba(255,255,255,0.04) 80%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Smooth default transitions ── */
+*,
+*::before,
+*::after {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Mobile safe area ── */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+
+/* ── Touch feedback ── */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a:active {
+    opacity: 0.75;
+    transform: scale(0.98);
+  }
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid rgba(59,127,245,0.55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Noise texture overlay (very subtle) ── */
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.018;
+  pointer-events: none;
+}
+
+/* ── Input autofill reset ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #e8edf5;
+  -webkit-box-shadow: 0 0 0 1000px #0a0c10 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ── Truncate util ── */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   AUTH DESIGN TOKENS
+   Spec: bg #0a0c10 · surface #11141a · border #1f242d · accent #3b82f6
+   ══════════════════════════════════════════════════════════════ */
+:root {
+  --auth-bg:        #0a0c10;
+  --auth-surface:   #11141a;
+  --auth-border:    #1f242d;
+  --auth-border-hover: #2c3448;
+  --auth-border-focus: #3b82f6;
+  --auth-accent:    #3b82f6;
+  --auth-accent-dim:#2563eb;
+  --auth-text:      #e8edf5;
+  --auth-label:     #8892a4;
+  --auth-placeholder: #3d4659;
+  --auth-icon:      #3d4659;
+  --auth-muted:     #4f5a70;
+  --auth-danger:    #f87171;
+  --auth-success:   #34d399;
+  --auth-ring:      rgba(59,130,246,0.20);
+}
+
+/* ── auth-field: base input used by TextField / PasswordField / OtpField ── */
+.auth-field {
+  display: block;
+  width: 100%;
+  min-height: 44px;          /* WCAG 2.5.5 target size */
+  padding: 0 0.875rem;
+  background: var(--auth-surface);
+  border: 1px solid var(--auth-border);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--auth-text);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  /* Remove webkit inner shadow on iOS */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.auth-field::placeholder {
+  color: var(--auth-placeholder);
+}
+.auth-field:hover:not(:focus):not(:disabled) {
+  border-color: var(--auth-border-hover);
+}
+.auth-field:focus {
+  border-color: var(--auth-border-focus);
+  box-shadow: 0 0 0 3px var(--auth-ring);
+}
+.auth-field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Error state — applied via class by components */
+.auth-field--error {
+  border-color: var(--auth-danger) !important;
+  box-shadow: 0 0 0 3px rgba(248,113,113,0.15) !important;
+}
+
+/* ── auth-btn: primary CTA ── */
+.auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 44px;          /* WCAG tap target */
+  padding: 0 1.25rem;
+  background: var(--auth-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+.auth-btn:hover:not(:disabled) {
+  background: var(--auth-accent-dim);
+  box-shadow: 0 4px 18px rgba(59,130,246,0.28);
+  transform: translateY(-1px);
+}
+.auth-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.auth-btn:focus-visible {
+  outline: 2px solid var(--auth-accent);
+  outline-offset: 2px;
+}
+.auth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Autofill override — uses auth-surface so bg doesn't go white ── */
+.auth-field:-webkit-autofill,
+.auth-field:-webkit-autofill:hover,
+.auth-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--auth-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--auth-surface) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ── Accessibility & Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
