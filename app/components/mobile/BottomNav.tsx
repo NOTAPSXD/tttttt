@@ -59,7 +59,6 @@ export default function BottomNav() {
                                 <span
                                     className="text-[10px] font-medium tracking-wide z-10 transition-colors duration-150"
                                     style={{ color: active ? "#e6e8ec" : "#8b93a1" }}
-                                    style={{ color: active ? "#3b7ff5" : "#2e3548" }}
                                 >
                                     {item.label}
                                 </span>
