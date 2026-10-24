@@ -54,16 +54,28 @@ export async function POST(req: Request) {
             // Escalating a possibly-compromised account: notify the owner.
             sendEmail(
                 user.email,
-                "Your password was changed - VexaNode",
+                "Security Notice: Your VexaNode account password was changed",
                 `
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                    <div style="background: #0f172a; padding: 20px; text-align: center;">
-                        <h2 style="color: white; margin: 0;">Password Changed</h2>
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #0a0c10; color: #e6e8ec; border: 1px solid #1f242d; border-radius: 8px;">
+                    <div style="margin-bottom: 20px; border-bottom: 1px solid #1f242d; padding-bottom: 16px;">
+                        <span style="font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: 1px;">VEXANODE</span>
                     </div>
-                    <div style="padding: 30px; background: white; color: #334155;">
-                        <p>Hello <b>${user.name}</b>,</p>
-                        <p>Your password was changed using a reset link. If this was you, no action is needed. If you did not request this, contact support immediately.</p>
+                    <h2 style="font-size: 18px; font-weight: 600; color: #ffffff; margin-top: 0;">Password Reset Completed</h2>
+                    <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                        Hello <b style="color: #e6e8ec;">${user.name}</b>,
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                        Your password was successfully changed using a password reset link. All other active sessions have been invalidated.
+                    </p>
+                    <div style="margin: 24px 0; padding: 14px; background: #11141a; border: 1px solid #1f242d; border-radius: 6px;">
+                        <p style="margin: 0; font-size: 13px; color: #8b93a1;">
+                            <strong style="color: #e6e8ec;">Time:</strong> ${new Date().toUTCString()}<br/>
+                            <strong style="color: #e6e8ec;">Method:</strong> Password Reset Token
+                        </p>
                     </div>
+                    <p style="font-size: 13px; line-height: 1.6; color: #ef4444;">
+                        <strong>Did not request this?</strong> If you did not reset your password, contact support immediately.
+                    </p>
                 </div>
                 `,
                 "SYSTEM",

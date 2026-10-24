@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { logAudit, notifyUser } from "@/lib/audit";
 import { parseBody, changePasswordSchema } from "@/lib/validation";
 import { revokeAllUserSessions } from "@/lib/sessions";
+import { sendEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
@@ -41,6 +42,39 @@ export async function POST(req: Request) {
             type: "info",
             link: "/client/settings",
         }).catch(() => {});
+
+        // Send email alert to user
+        if (user.email) {
+            sendEmail(
+                user.email,
+                "Security Notice: Your VexaNode account password was changed",
+                `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #0a0c10; color: #e6e8ec; border: 1px solid #1f242d; border-radius: 8px;">
+                    <div style="margin-bottom: 20px; border-bottom: 1px solid #1f242d; padding-bottom: 16px;">
+                        <span style="font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: 1px;">VEXANODE</span>
+                    </div>
+                    <h2 style="font-size: 18px; font-weight: 600; color: #ffffff; margin-top: 0;">Password Changed Successfully</h2>
+                    <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                        Hello <b style="color: #e6e8ec;">${user.name || user.email}</b>,
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                        Your VexaNode account password was recently changed. All other active sessions on your devices have been signed out for your security.
+                    </p>
+                    <div style="margin: 24px 0; padding: 14px; background: #11141a; border: 1px solid #1f242d; border-radius: 6px;">
+                        <p style="margin: 0; font-size: 13px; color: #8b93a1;">
+                            <strong style="color: #e6e8ec;">Time:</strong> ${new Date().toUTCString()}<br/>
+                            <strong style="color: #e6e8ec;">Action:</strong> User Password Update
+                        </p>
+                    </div>
+                    <p style="font-size: 13px; line-height: 1.6; color: #ef4444;">
+                        <strong>Did not make this change?</strong> If you did not change your password, your account may be compromised. Please contact support immediately.
+                    </p>
+                </div>
+                `,
+                "SECURITY",
+                "Your VexaNode account password was recently changed. If you did not make this change, please contact support immediately."
+            ).catch((err) => console.error("Failed to send password change email:", err));
+        }
 
         // All sessions (including this one) self-invalidate on the next
         // request because the JWT callback compares the stored password hash.

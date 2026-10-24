@@ -49,11 +49,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             targetUser.email,
             "Security Alert: Your account password was changed by an administrator",
             `
-            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-                <h2>Security Notice</h2>
-                <p>Hello <b>${targetUser.name}</b>,</p>
-                <p>Your VexaNode account password was recently reset by an administrator.</p>
-                <p>All active sessions have been invalidated. If you did not authorize this change, please contact platform security immediately.</p>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #0a0c10; color: #e6e8ec; border: 1px solid #1f242d; border-radius: 8px;">
+                <div style="margin-bottom: 20px; border-bottom: 1px solid #1f242d; padding-bottom: 16px;">
+                    <span style="font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: 1px;">VEXANODE</span>
+                </div>
+                <h2 style="font-size: 18px; font-weight: 600; color: #ffffff; margin-top: 0;">Security Alert: Administrative Password Reset</h2>
+                <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                    Hello <b style="color: #e6e8ec;">${targetUser.name || targetUser.email}</b>,
+                </p>
+                <p style="font-size: 14px; line-height: 1.6; color: #8b93a1;">
+                    Your VexaNode account password was recently changed by an administrator. All active sessions have been invalidated immediately.
+                </p>
+                <div style="margin: 24px 0; padding: 14px; background: #11141a; border: 1px solid #1f242d; border-radius: 6px;">
+                    <p style="margin: 0; font-size: 13px; color: #8b93a1;">
+                        <strong style="color: #e6e8ec;">Time:</strong> ${new Date().toUTCString()}<br/>
+                        <strong style="color: #e6e8ec;">Performed by:</strong> Administrative Staff
+                    </p>
+                </div>
+                <p style="font-size: 13px; line-height: 1.6; color: #ef4444;">
+                    If you did not request or authorize this change, please contact platform security immediately.
+                </p>
             </div>
             `,
             session.user.email || "SECURITY"
