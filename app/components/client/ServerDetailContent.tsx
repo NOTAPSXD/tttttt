@@ -169,8 +169,9 @@ export default function ServerDetailContent({ serverId, initial, providerType }:
     const memUsedMb = parseMemUsedMb(liveStats.memory ?? vfData?.memoryUsed ?? 0);
     const memPct = memTotalMb > 0 ? clampPercent(Math.round((memUsedMb / memTotalMb) * 100)) : 0;
 
-    const diskTotalGb = Math.max(0, Math.round(Number(initial.storageTotalGb ?? 0)));
-    const diskUsedGb = Math.min(diskTotalGb, Math.max(0, Math.round(Number(initial.storageUsedGb ?? 0))));
+    const parsedCapacity = parseInt(String(initial.capacity || "0"), 10) || 0;
+    const diskTotalGb = Math.max(0, Math.round(Number((initial as any).storageTotalGb ?? parsedCapacity)));
+    const diskUsedGb = Math.min(diskTotalGb, Math.max(0, Math.round(Number((initial as any).storageUsedGb ?? 0))));
     const diskPct = diskTotalGb > 0 ? clampPercent(Math.round((diskUsedGb / diskTotalGb) * 100)) : 0;
 
     const ip = initial.ip || (Array.isArray(vfData?.ips) ? vfData?.ips[0] : "") || "";
@@ -347,7 +348,7 @@ export default function ServerDetailContent({ serverId, initial, providerType }:
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <ResourceBar value={cpuPct} tone={cpuPct > 85 ? "danger" : cpuPct > 60 ? "warning" : "info"} />
+                        <ResourceBar value={cpuPct} color={cpuPct > 85 ? "red" : cpuPct > 60 ? "amber" : "blue"} />
                         <p className="text-[11px] text-[#8b93a1]">{cores} vCPU core{cores > 1 ? "s" : ""}</p>
                     </CardContent>
                 </Card>
@@ -362,7 +363,7 @@ export default function ServerDetailContent({ serverId, initial, providerType }:
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <ResourceBar value={memPct} tone={memPct > 85 ? "danger" : memPct > 60 ? "warning" : "success"} />
+                        <ResourceBar value={memPct} color={memPct > 85 ? "red" : memPct > 60 ? "amber" : "green"} />
                         <p className="text-[11px] text-[#8b93a1]">
                             {memUsedMb > 0 ? `${formatGib(memUsedMb / 1024)} / ` : ""}
                             {formatGib(memTotalMb / 1024)} allocated
@@ -380,7 +381,7 @@ export default function ServerDetailContent({ serverId, initial, providerType }:
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <ResourceBar value={diskPct} tone={diskPct > 90 ? "danger" : "info"} />
+                        <ResourceBar value={diskPct} color={diskPct > 90 ? "red" : "blue"} />
                         <p className="text-[11px] text-[#8b93a1]">
                             {diskTotalGb > 0 ? `${diskUsedGb} GB of ${diskTotalGb} GB` : "Quota configured"}
                         </p>
@@ -436,25 +437,66 @@ export default function ServerDetailContent({ serverId, initial, providerType }:
                 </CardContent>
             </Card>
 
+            {/* Tabs Navigation */}
+            <div className="flex gap-1 overflow-x-auto rounded-lg border border-[#1f242d] bg-[#11141a] p-1">
+                {tabs.map((t) => (
+                    <button
+                        key={t.key}
+                        onClick={() => setActiveTab(t.key)}
+                        className={cn(
+                            "whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                            activeTab === t.key
+                                ? "bg-[#1f242d] text-[#e6e8ec]"
+                                : "text-[#8b93a1] hover:text-[#e6e8ec]",
+                        )}
+                    >
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
             {/* Tabs for deep details */}
             <DetailTabs
-                active={activeTab}
-                onChange={setActiveTab}
-                tabs={tabs}
+                activeTab={activeTab}
                 server={initial}
                 vfData={vfData}
+                serverId={serverId}
+                name={name}
+                setName={setName}
+                onSaveName={() => handleRename({ preventDefault: () => {} } as any)}
+                savingName={savingName}
             />
 
             {/* Recent Tasks */}
             <TaskTable
-                tasks={(tasks || []).map((t: any) => ({
-                    id: String(t.id || t._id || Math.random()),
-                    action: String(t.action || t.type || "Operation"),
-                    status: (t.status === "complete" || t.status === "SUCCESS") ? "complete" : (t.status === "failed" || t.status === "FAILED") ? "failed" : "running",
-                    createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
-                    updatedAt: t.updatedAt ? new Date(t.updatedAt).toISOString() : undefined,
-                    error: t.error || t.message,
-                }))}
+                tasks={(tasks ?? []).map((t: any, idx: number) => {
+                    const rawAction = String(t.action || t.type || t.name || t.reference || "Server operation");
+                    const formattedType = rawAction
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+                    const startedIso = t.started || t.startedAt || t.createdAt || t.created || null;
+                    const finishedIso = t.finished || t.finishedAt || t.completedAt || t.updated || null;
+
+                    let durationSeconds: number | null = typeof t.durationSeconds === "number" ? t.durationSeconds : null;
+                    if (durationSeconds == null && startedIso && finishedIso) {
+                        const s = new Date(startedIso).getTime();
+                        const f = new Date(finishedIso).getTime();
+                        if (!Number.isNaN(s) && !Number.isNaN(f) && f >= s) {
+                            durationSeconds = (f - s) / 1000;
+                        }
+                    }
+
+                    return {
+                        id: String(t.id || t.reference || `task-${idx}-${startedIso || Math.random()}`),
+                        serverId: initial.id,
+                        serverName: initial.name,
+                        type: formattedType,
+                        status: String(t.status || (t.completed ? "complete" : "unknown")),
+                        requestedAt: startedIso ? new Date(startedIso).toISOString() : null,
+                        durationSeconds,
+                    };
+                })}
                 title="Activity Log"
                 description="Recorded operations and lifecycle events"
                 emptyText="No recent operations recorded."
