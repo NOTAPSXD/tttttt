@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession, signOut } from "next-auth/react";
-import { Loader2, Lock, Shield, Key, Tag, Hash, ShieldCheck, QrCode, Copy, Check, Monitor, Smartphone, Globe, Clock } from "lucide-react";
+import { Loader2, Lock, Shield, Key, Tag, Hash, ShieldCheck, QrCode, Copy, Check, Monitor, Smartphone, Globe, Clock, Terminal, LogOut } from "lucide-react";
 import QRCode from "qrcode";
 
 export default function ClientSettingsPage() {
@@ -414,7 +414,9 @@ function SessionsCard() {
     const [sessions, setSessions] = useState<SessionRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState<string | null>(null);
+    const [revokingAll, setRevokingAll] = useState(false);
     const [error, setError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
 
     const load = () => {
         setLoading(true);
@@ -432,9 +434,12 @@ function SessionsCard() {
     const revoke = async (id: string) => {
         setBusy(id);
         setError("");
+        setSuccessMessage("");
         try {
             await axios.post(`/api/user/sessions/${id}/revoke`);
             setSessions((prev) => prev.filter((s) => s.id !== id));
+            setSuccessMessage("Session signed out successfully.");
+            setTimeout(() => setSuccessMessage(""), 4000);
         } catch (e: any) {
             setError(e.response?.data?.error || "Failed to revoke session");
         } finally {
@@ -442,78 +447,175 @@ function SessionsCard() {
         }
     };
 
-    const isMobile = (label: string) => /Android|iOS/i.test(label);
+    const revokeAllOthers = async () => {
+        if (!confirm("Are you sure you want to sign out of all other devices?")) return;
+        setRevokingAll(true);
+        setError("");
+        setSuccessMessage("");
+        try {
+            await axios.delete("/api/user/sessions");
+            setSessions((prev) => prev.filter((s) => s.current));
+            setSuccessMessage("Signed out of all other devices successfully.");
+            setTimeout(() => setSuccessMessage(""), 4000);
+        } catch (e: any) {
+            setError(e.response?.data?.error || "Failed to sign out other devices");
+        } finally {
+            setRevokingAll(false);
+        }
+    };
+
+    const getDeviceIcon = (label: string) => {
+        if (/Android|iOS|iPhone|iPad/i.test(label)) {
+            return <Smartphone className="w-5 h-5 text-blue-400" />;
+        }
+        if (/API|Developer|Script|CLI|Node/i.test(label)) {
+            return <Terminal className="w-5 h-5 text-amber-400" />;
+        }
+        return <Monitor className="w-5 h-5 text-zinc-300" />;
+    };
+
+    const formatLastSeen = (s: SessionRow) => {
+        if (s.current) return "Active now";
+        if (!s.lastSeenAt) return "Unknown";
+        const date = new Date(s.lastSeenAt);
+        const diffMs = Date.now() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 2) return "Just now";
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return date.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const otherSessionsCount = sessions.filter((s) => !s.current).length;
 
     return (
-        <div className="bg-[#09090b]/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-2 mb-5">
-                <Shield className="w-5 h-5 text-violet-400" />
-                <h2 className="text-xl font-black text-zinc-100">Active Sessions</h2>
+        <div className="bg-[#11141a] border border-[#1f242d] rounded-xl p-6 shadow-sm relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-[#1f242d]">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                        <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-base font-semibold text-[#e6e8ec]">Active Sessions</h2>
+                            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#181c24] text-[#8b93a1] border border-[#262c37]">
+                                {sessions.length}
+                            </span>
+                        </div>
+                        <p className="text-xs text-[#8b93a1] mt-0.5">
+                            Manage devices and browsers currently signed in to your account.
+                        </p>
+                    </div>
+                </div>
+
+                {otherSessionsCount > 0 && (
+                    <button
+                        type="button"
+                        onClick={revokeAllOthers}
+                        disabled={revokingAll}
+                        className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        {revokingAll ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <LogOut className="w-3.5 h-3.5" />
+                        )}
+                        Sign out other devices ({otherSessionsCount})
+                    </button>
+                )}
             </div>
 
             {loading ? (
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                    <Loader2 className="animate-spin w-4 h-4" /> Loading sessions…
+                <div className="flex items-center justify-center py-8 text-sm text-[#8b93a1] gap-2">
+                    <Loader2 className="animate-spin w-4 h-4 text-blue-400" /> Loading sessions…
                 </div>
             ) : sessions.length === 0 ? (
-                <p className="text-sm text-zinc-500">No active sessions found.</p>
+                <div className="py-8 text-center text-sm text-[#8b93a1]">
+                    No active sessions found.
+                </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                     {sessions.map((s) => {
-                        const mobile = isMobile(s.deviceLabel);
                         return (
                             <div
                                 key={s.id}
-                                className="flex items-center justify-between gap-4 border border-zinc-800/60 rounded-xl p-4"
+                                className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-colors ${
+                                    s.current
+                                        ? "bg-[#141820] border-blue-500/30"
+                                        : "bg-[#0d1016] border-[#1f242d] hover:border-[#2a313d]"
+                                }`}
                             >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 shrink-0 rounded-xl bg-zinc-800/80 flex items-center justify-center">
-                                        {mobile ? (
-                                            <Smartphone className="w-5 h-5 text-zinc-400" />
-                                        ) : (
-                                            <Monitor className="w-5 h-5 text-zinc-400" />
-                                        )}
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="w-9 h-9 shrink-0 rounded-lg bg-[#181c24] border border-[#262c37] flex items-center justify-center">
+                                        {getDeviceIcon(s.deviceLabel)}
                                     </div>
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <p className="text-sm font-bold text-zinc-100 truncate">
+                                            <p className="text-sm font-medium text-[#e6e8ec] truncate">
                                                 {s.deviceLabel}
                                             </p>
                                             {s.current && (
-                                                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                                                <span className="text-[10px] font-semibold tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded px-1.5 py-0.5">
                                                     This device
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-zinc-500">
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-[#8b93a1]">
                                             {s.ip && (
-                                                <span className="flex items-center gap-1">
-                                                    <Globe className="w-3 h-3" /> {s.ip}
+                                                <span className="flex items-center gap-1 font-mono text-[11px]">
+                                                    <Globe className="w-3 h-3 text-[#8b93a1]" /> {s.ip}
                                                 </span>
                                             )}
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                Last seen {s.lastSeenAt ? new Date(s.lastSeenAt).toLocaleString() : "unknown"}
+                                            <span className="flex items-center gap-1 text-[11px]">
+                                                <Clock className="w-3 h-3 text-[#8b93a1]" />
+                                                {formatLastSeen(s)}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => revoke(s.id)}
-                                    disabled={busy === s.id}
-                                    className="shrink-0 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {busy === s.id ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : "Sign out"}
-                                </button>
+
+                                <div>
+                                    {s.current ? (
+                                        <span className="text-xs text-emerald-400/90 font-mono text-[11px] px-2.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/20">
+                                            Current
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => revoke(s.id)}
+                                            disabled={busy === s.id}
+                                            className="text-xs font-medium text-[#8b93a1] hover:text-red-400 hover:bg-red-500/10 border border-[#262c37] hover:border-red-500/30 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+                                        >
+                                            {busy === s.id ? (
+                                                <Loader2 className="animate-spin w-3.5 h-3.5" />
+                                            ) : (
+                                                "Sign out"
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
                 </div>
             )}
 
-            {error && <p className="mt-4 text-xs text-red-400 font-bold">{error}</p>}
+            {error && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs font-medium text-red-400">
+                    {error}
+                </div>
+            )}
+            {successMessage && (
+                <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-medium text-emerald-400">
+                    {successMessage}
+                </div>
+            )}
         </div>
     );
 }
