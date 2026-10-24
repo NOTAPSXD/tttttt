@@ -11,34 +11,40 @@ export default async function AdminUsersPage() {
         { $group: { _id: { $ifNull: ["$ownerId", "$userId"] }, count: { $sum: 1 } } }
     ]);
 
-    const countMap = new Map();
+    const countMap = new Map<string, number>();
     serverCounts.forEach((s: any) => {
         if (s._id) countMap.set(s._id.toString(), s.count);
     });
 
-    const users = usersData.map((u: any) => ({
-        ...u,
-        id: u._id.toString(),
-        _id: u._id.toString(),
-        _count: {
-            servers: countMap.get(u._id.toString()) || 0
-        }
-    }));
+    const formattedUsers = usersData.map((u: any) => {
+        const id = u._id.toString();
+        const serverCount = countMap.get(id) || 0;
+        return {
+            id,
+            _id: id,
+            name: u.name || "",
+            email: u.email || "",
+            role: (u.role || "CLIENT") as "CLIENT" | "SUPPORT" | "ADMIN" | "SUPER_ADMIN",
+            status: (u.status || (u.suspended ? "suspended" : "active")) as "active" | "suspended",
+            suspended: Boolean(u.suspended),
+            verified: Boolean(u.verified),
+            balance: Number(u.balance || 0),
+            discordId: u.discordId || null,
+            lastLogin: u.lastLogin instanceof Date ? u.lastLogin.toISOString() : (u.lastLogin || null),
+            lastLoginIp: u.lastLoginIp || null,
+            createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : (u.createdAt || null),
+            updatedAt: u.updatedAt instanceof Date ? u.updatedAt.toISOString() : (u.updatedAt || null),
+            twoFactorEnabled: Boolean(u.twoFactor?.enabled),
+            serversCount: serverCount,
+            _count: {
+                servers: serverCount,
+            },
+        };
+    });
 
-    const formattedUsers = users.map((user: any) => ({
-        ...user,
-        role: user.role as "ADMIN" | "CLIENT",
-        createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
-        updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : user.updatedAt,
-    }));
-
-    // Serialize to remove any lingering Mongoose objects
+    // Serialize to remove any lingering Mongoose-specific objects
     const serializedUsers = JSON.parse(JSON.stringify(formattedUsers));
 
-    return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <h1 className="text-3xl font-bold text-white">User Management</h1>
-            <UserManagement users={serializedUsers} />
-        </div>
-    )
+    return <UserManagement users={serializedUsers} />;
 }
+
